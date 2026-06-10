@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Services réseau : DNS, DHCP et diagnostic</title>
+<style>
+  :root{
+    --accent:#0078d4; --accent-d:#005fb8;
+    --desktop:#eaeef4; --surface:#ffffff; --mica:#f7f9fc;
+    --ink:#1b1b1b; --ink-soft:#383838; --muted:#5d5d5d;
+    --line:#e2e6ec; --line-soft:#edf0f4;
+    --hero:#0a59b0; --hero2:#0c4f9c;
+    /* PowerShell console */
+    --ps-bg:#012456; --ps-bar:#0a1f47; --ps-text:#e8e8e8;
+    --c-com:#57a64a; --c-kw:#dcdcaa; --c-str:#ce9178; --c-par:#9cdcfe; --c-num:#b5cea8;
+    /* Fluent InfoBars */
+    --warn-bg:#fff4ce; --warn-bd:#9d5d00;
+    --tip-bg:#f0f6ff;  --tip-bd:#0078d4;
+    --note-bg:#f4f1fb; --note-bd:#6b4fbb;
+    --key-bg:#dff6dd;  --key-bd:#0f7b0f;
+    --meta-bg:#eef3fb; --meta-bd:#5b5fc7;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--desktop); color:var(--ink);
+    font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  code,kbd,pre{font-family:"Cascadia Code","Cascadia Mono",Consolas,"SFMono-Regular",ui-monospace,monospace}
+
+  /* ---------- Window title bar ---------- */
+  .winbar{
+    position:sticky; top:0; z-index:30; height:36px; display:flex; align-items:center;
+    background:var(--mica); border-bottom:1px solid var(--line);
+    padding-left:12px; font-size:.8rem; color:var(--ink-soft);
+  }
+  .winbar .wlogo{display:flex; gap:1.5px; margin-right:9px}
+  .winbar .wlogo i{width:7px; height:7px; background:var(--accent); display:block}
+  .winbar .wtitle{flex:1 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted)}
+  .winbar .caps{display:flex; height:36px}
+  .winbar .cap{width:46px; height:36px; display:flex; align-items:center; justify-content:center; cursor:default}
+  .winbar .cap:hover{background:#e3e7ee}
+  .winbar .cap.close:hover{background:#c42b1c; color:#fff}
+  .cap.min i{width:10px; height:1px; background:currentColor; display:block}
+  .cap.max i{width:9px; height:9px; border:1px solid currentColor; display:block; border-radius:1px}
+  .cap.close i{font-style:normal; font-size:.82rem; line-height:1}
+
+  /* ---------- Hero ---------- */
+  header.hero{
+    background:var(--hero); color:#fff; padding:30px 20px 28px; border-bottom:1px solid var(--hero2);
+  }
+  .hero-inner{max-width:1180px; margin:0 auto}
+  .brand{display:flex; align-items:center; gap:9px; margin:0 0 14px; font-weight:600; font-size:.92rem; color:#dbe9fb}
+  .brand .blogo{display:flex; gap:2px}
+  .brand .blogo i{width:9px; height:9px; background:#fff; display:block}
+  .eyebrow{font-size:.76rem; letter-spacing:.12em; text-transform:uppercase; color:#a9c8ee; margin:0 0 8px}
+  .hero h1{margin:0 0 6px; font-size:1.8rem; line-height:1.18; font-weight:650}
+  .hero p.sub{margin:0; color:#cfe0f6; font-size:1rem}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1180px; margin:0 auto; display:flex; gap:30px; padding:0 20px; background:var(--surface)}
+  nav.toc{
+    flex:0 0 252px; position:sticky; top:36px; align-self:flex-start;
+    max-height:calc(100vh - 36px); overflow-y:auto; padding:22px 8px 40px;
+  }
+  nav.toc .toc-title{font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; padding-left:12px; font-weight:600}
+  nav.toc ol{list-style:none; margin:0; padding:0; counter-reset:toc}
+  nav.toc a{
+    counter-increment:toc; display:block; text-decoration:none; color:var(--ink-soft);
+    font-size:.88rem; padding:7px 10px 7px 34px; border-radius:6px; position:relative; margin:1px 0;
+  }
+  nav.toc a::before{content:counter(toc); position:absolute; left:12px; color:var(--muted); font-variant-numeric:tabular-nums; font-size:.78rem; top:7px}
+  nav.toc a::after{content:""; position:absolute; left:3px; top:50%; transform:translateY(-50%); width:3px; height:0; background:var(--accent); border-radius:3px; transition:height .12s ease}
+  nav.toc a:hover{background:#eef3fb; color:var(--accent-d)}
+  nav.toc a:hover::after{height:16px}
+
+  main{flex:1 1 auto; max-width:800px; padding:28px 0 80px; min-width:0; border-left:1px solid var(--line-soft); padding-left:30px}
+
+  .programme{background:var(--mica); border:1px solid var(--line); border-radius:8px; padding:16px 20px; margin:0 0 14px}
+  .programme h2{margin:0 0 8px; font-size:1rem}
+  .programme h2::before{content:none !important}
+  .programme ol{margin:0; padding-left:22px}
+  .prereq{font-size:.93rem; color:var(--ink-soft)}
+
+  /* ---------- Section numbering ---------- */
+  main{counter-reset:h2}
+  h2.sec{
+    counter-reset:h3; counter-increment:h2; font-size:1.36rem; font-weight:650; margin:40px 0 6px;
+    padding-bottom:8px; border-bottom:2px solid var(--line); scroll-margin-top:48px;
+  }
+  h2.sec::before{content:counter(h2) ". "; color:var(--accent); font-weight:700}
+  h3.sub{counter-increment:h3; font-size:1.06rem; font-weight:650; margin:24px 0 6px; scroll-margin-top:48px}
+  h3.sub::before{content:counter(h2) "." counter(h3) "  "; color:var(--accent); font-weight:600}
+  p{margin:10px 0} ul,ol{padding-left:24px} li{margin:4px 0}
+  strong{font-weight:650}
+  code.inline{background:#f1f3f7; border:1px solid #e1e5ec; border-radius:4px; padding:1px 5px; font-size:.85em; color:#0b3b73}
+
+  /* ---------- PowerShell console ---------- */
+  .ps{margin:14px 0; border-radius:8px; overflow:hidden; border:1px solid #0a1f47; box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .ps-bar{
+    background:var(--ps-bar); color:#cfd8ea; font-size:.76rem; padding:6px 12px;
+    display:flex; align-items:center; gap:8px; font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  }
+  .ps-ico{width:10px; height:10px; border-radius:2px; background:linear-gradient(135deg,#3a7bd5,#0a59b0); flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  .ps pre{margin:0; background:var(--ps-bg); color:var(--ps-text); border:none; border-radius:0; padding:13px 16px; overflow-x:auto; font-size:.84rem; line-height:1.55}
+  pre code{white-space:pre}
+  .c{color:var(--c-com); font-style:italic}
+  .k{color:var(--c-kw)} .s{color:var(--c-str)} .p{color:var(--c-par)} .num{color:var(--c-num)} .v{color:#9cdcfe}
+
+  /* ---------- Callouts (Fluent InfoBar) ---------- */
+  .box{border:1px solid var(--line); border-left-width:4px; border-radius:6px; padding:12px 16px; margin:14px 0; font-size:.94rem}
+  .box p{margin:6px 0} .box p:first-child{margin-top:0} .box p:last-child{margin-bottom:0}
+  .box .lbl{font-weight:700; display:block; margin-bottom:3px}
+  .warn{background:var(--warn-bg); border-color:#f2e6b0; border-left-color:var(--warn-bd)}
+  .warn .lbl{color:#7a4a00}
+  .tip {background:var(--tip-bg);  border-color:#d4e4fb; border-left-color:var(--tip-bd)} .tip .lbl{color:#005fb8}
+  .note{background:var(--note-bg); border-color:#e2daf4; border-left-color:var(--note-bd)} .note .lbl{color:#523a99}
+  .key {background:var(--key-bg);  border-color:#c4ecc0; border-left-color:var(--key-bd)} .key .lbl{color:#0c5e0c}
+  .meta{background:var(--meta-bg); border-color:#d7def0; border-left-color:var(--meta-bd)} .meta .lbl{color:#3f43a8}
+
+  /* ---------- Diagram (console-styled) ---------- */
+  .diagram{
+    background:var(--ps-bg); color:#cdd6e6; border:1px solid #0a1f47; border-radius:8px;
+    padding:18px 16px; margin:16px 0; font-size:.8rem; line-height:1.45; overflow-x:auto;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+  }
+  .diagram .nat{color:#6ee7b7} .diagram .int{color:#9cdcfe} .diagram .lab{color:#dcdcaa}
+
+  /* ---------- Tables ---------- */
+  table{border-collapse:collapse; width:100%; margin:14px 0; font-size:.91rem}
+  th,td{border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top}
+  th{background:var(--mica); font-weight:650}
+  tbody tr:nth-child(even){background:#fafcfe}
+  td code{font-size:.85em}
+  .recap th{background:var(--accent); color:#fff; border-color:var(--accent-d)}
+
+  hr{border:none; border-top:1px solid var(--line); margin:34px 0}
+  footer{background:var(--mica); border-top:1px solid var(--line); padding:16px 20px; color:var(--muted); font-size:.84rem; text-align:center}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:880px){
+    .wrap{flex-direction:column; gap:0}
+    nav.toc{position:static; max-height:none; flex-basis:auto; padding:16px 8px 4px; border-bottom:1px solid var(--line); margin-bottom:6px}
+    nav.toc ol{display:flex; flex-wrap:wrap; gap:4px; counter-reset:toc}
+    nav.toc a{padding:6px 12px 6px 28px; border:1px solid var(--line); border-radius:999px; font-size:.8rem; margin:0}
+    nav.toc a::before{top:6px}
+    nav.toc a::after{display:none}
+    main{padding-left:0; border-left:none; padding-top:16px}
+    .hero h1{font-size:1.42rem}
+    .winbar .wtitle{font-size:.74rem}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<div class="winbar">
+  <span class="wlogo"><i></i><i></i><i></i><i></i></span>
+  <span class="wtitle">J2_DNS_DHCP_Diagnostic — Support de cours</span>
+  <span class="caps">
+    <span class="cap min"><i></i></span>
+    <span class="cap max"><i></i></span>
+    <span class="cap close"><i>✕</i></span>
+  </span>
+</div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="brand"><span class="blogo"><i></i><i></i><i></i><i></i></span>Windows Server 2022</div>
+    <p class="eyebrow">Module 1WIN2 · Jour 2</p>
+    <h1>Services réseau : DNS, DHCP et diagnostic</h1>
+    <p class="sub">Donner des noms au réseau, distribuer les adresses automatiquement, et savoir dépanner.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc">
+    <p class="toc-title">Sommaire</p>
+    <ol>
+      <li><a href="#s1">DNS : à quoi ça sert</a></li>
+      <li><a href="#s2">Installer le rôle DNS</a></li>
+      <li><a href="#s3">Créer les zones</a></li>
+      <li><a href="#s4">Ajouter les enregistrements</a></li>
+      <li><a href="#s5">Redirecteurs & cache</a></li>
+      <li><a href="#tp1">TP 1 — DNS formation.local</a></li>
+      <li><a href="#s6">DHCP : le protocole DORA</a></li>
+      <li><a href="#s7">Installer le rôle DHCP</a></li>
+      <li><a href="#s8">Étendues & réservations</a></li>
+      <li><a href="#tp2">TP 2 — DHCP multi-réseaux</a></li>
+      <li><a href="#s9">Intégration DNS/DHCP</a></li>
+      <li><a href="#tp3">TP 3 — Intégration complète</a></li>
+      <li><a href="#s10">Diagnostic réseau</a></li>
+      <li><a href="#tp4">TP 4 — Trois pannes</a></li>
+      <li><a href="#recap">Ce qu'il faut retenir</a></li>
+      <li><a href="#reflexes">Réflexes & contrôle</a></li>
+    </ol>
+  </nav>
+  <main>
+
+    <div class="programme">
+      <h2>Au programme aujourd'hui</h2>
+      <ol>
+        <li>Comprendre et installer le rôle <strong>DNS</strong> (résolution de noms) — zones directe et inversée, enregistrements.</li>
+        <li>Comprendre et installer le rôle <strong>DHCP</strong> (attribution automatique d'adresses) — le processus DORA, étendues, réservations.</li>
+        <li><strong>Intégrer</strong> DNS et DHCP : la mise à jour dynamique des enregistrements.</li>
+        <li>Maîtriser les <strong>outils de diagnostic réseau</strong> de Windows et une méthode de dépannage par couches.</li>
+      </ol>
+    </div>
+
+    <p class="prereq"><strong>Prérequis</strong> &mdash; Le serveur du Jour 1 : Windows Server 2022, IP statique, PowerShell en administrateur, RSAT côté client. On travaille ici sur le réseau <code class="inline">192.168.100.0/24</code> et le domaine <code class="inline">formation.local</code>. Le serveur porte l'adresse <code class="inline">192.168.100.10</code> (nom <code class="inline">SRV-DC01</code>).</p>
+
+<div class="box note"><span class="lbl">Rappel du Jour 1</span><p>Un serveur a <strong>toujours</strong> une IP statique. DNS et DHCP n'ont de sens que sur une machine dont l'adresse ne bouge jamais : c'est elle que tout le réseau va interroger.</p></div>
+<div class="box tip"><span class="lbl">Une correction utile sur les retours à la ligne</span><p>Dans certains supports, les commandes longues sont coupées avec un <strong>antislash</strong> <code class="inline">\</code> en fin de ligne. C'est la syntaxe Linux. En PowerShell, le caractère de continuation est l'<strong>accent grave</strong> <code class="inline">`</code> (backtick). Toutes les commandes ci-dessous utilisent le bon caractère.</p></div>
+<h2 class="sec" id="s1">DNS &mdash; traduire les noms en adresses</h2>
+<div class="box meta"><span class="lbl">La métaphore de l'annuaire</span><p>Le <strong>DNS</strong> (<em>Domain Name System</em>, « système de noms de domaine »), c'est l'<strong>annuaire téléphonique</strong> du réseau. Vous connaissez le <em>nom</em> de quelqu'un (<code class="inline">google.com</code>), mais pour l'appeler il vous faut son <em>numéro</em> (l'adresse IP). Le DNS est le standardiste qui, à chaque nom, répond par le bon numéro. Sans lui, il faudrait retenir des suites de chiffres pour joindre chaque machine.</p></div>
+
+    <p>On dit que le DNS fait de la <strong>résolution de noms</strong> : transformer <code class="inline">srv-dc01.formation.local</code> en <code class="inline">192.168.100.10</code>. Il gère aussi le chemin inverse (numéro vers nom), garde en mémoire les réponses récentes (le <strong>cache</strong>, comme un post-it de numéros fréquents), et sait à qui demander quand il ne connaît pas (les <strong>redirecteurs</strong>).</p>
+    <h3 class="sub" id="s1-1">Les types d'enregistrements</h3>
+    <p>Chaque ligne de l'annuaire a un <em>type</em> selon ce qu'elle décrit :</p>
+    <table>
+      <thead><tr><th>Type</th><th>Rôle</th><th>Dans la métaphore</th></tr></thead>
+      <tbody>
+        <tr><td><strong>A</strong></td><td>Nom &rarr; adresse IPv4</td><td>La ligne « nom &rarr; numéro » de base</td></tr>
+        <tr><td><strong>AAAA</strong></td><td>Nom &rarr; adresse IPv6</td><td>Le même, version IPv6</td></tr>
+        <tr><td><strong>CNAME</strong></td><td>Alias : un nom qui renvoie vers un autre</td><td>Un surnom qui pointe vers le vrai nom</td></tr>
+        <tr><td><strong>MX</strong></td><td>Serveur de messagerie du domaine</td><td>« Pour le courrier, adressez-vous à&hellip; »</td></tr>
+        <tr><td><strong>PTR</strong></td><td>Adresse IP &rarr; nom (résolution inverse)</td><td>L'annuaire inversé : on cherche par numéro</td></tr>
+        <tr><td><strong>SRV</strong></td><td>Localise un service (ex : un contrôleur de domaine)</td><td>« Le service X se trouve à cette adresse »</td></tr>
+      </tbody>
+    </table>
+
+<div class="box key"><span class="lbl">À retenir</span><p>Les enregistrements <strong>SRV</strong> seront cruciaux au Jour 3 : c'est par eux que les clients trouvent automatiquement le contrôleur Active Directory. Retenez qu'ils existent.</p></div>
+<h2 class="sec" id="s2">Installer le rôle DNS</h2>
+<h3 class="sub" id="s2-1">En interface graphique (Server Manager)</h3>
+
+    <ol>
+      <li>Ouvrir <strong>Gestionnaire de serveur</strong> (Server Manager).</li>
+      <li>Menu <strong>Gérer &rarr; Ajouter des rôles et fonctionnalités</strong>.</li>
+      <li>Type d'installation : <strong>Installation basée sur un rôle ou une fonctionnalité</strong>.</li>
+      <li>Sélectionner le serveur, puis cocher <strong>Serveur DNS</strong> dans la liste des rôles.</li>
+      <li>Accepter l'ajout des <strong>outils d'administration</strong>, puis <strong>Installer</strong>.</li>
+    </ol>
+
+<h3 class="sub" id="s2-2">En PowerShell (méthode recommandée)</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Installer le rôle DNS avec ses outils d&#x27;administration</span>
+<span class="k">Install-WindowsFeature</span> <span class="p">-Name</span> DNS <span class="p">-IncludeManagementTools</span>
+
+<span class="c"># Vérifier que le rôle est bien installé</span>
+<span class="k">Get-WindowsFeature</span> <span class="p">-Name</span> DNS
+
+<span class="c"># Vérifier que le service tourne</span>
+<span class="k">Get-Service</span> DNS</code></pre></div>
+<p><em>Analysons ces commandes ligne par ligne :</em></p>
+
+    <ul>
+      <li><code class="inline">Install-WindowsFeature -Name DNS</code> installe le rôle ; <code class="inline">-IncludeManagementTools</code> ajoute la console <em>DNS Manager</em> (<code class="inline">dnsmgmt.msc</code>).</li>
+      <li><code class="inline">Get-WindowsFeature</code> confirme l'état <code class="inline">Installed</code>.</li>
+      <li><code class="inline">Get-Service DNS</code> doit afficher <code class="inline">Running</code>.</li>
+    </ul>
+
+<div class="box tip"><span class="lbl">Bonne pratique</span><p>En entreprise on installe toujours en PowerShell : c'est reproductible, scriptable, et identique sur 1 ou 50 serveurs. La GUI sert surtout à <em>vérifier</em> et à comprendre la structure.</p></div>
+<h2 class="sec" id="s3">Créer les zones DNS</h2>
+<div class="box meta"><span class="lbl">La métaphore poursuivie</span><p>Une <strong>zone</strong>, c'est le <em>carnet d'adresses d'un quartier</em> : la portion de l'annuaire dont <em>ce</em> serveur est responsable. La <strong>zone directe</strong> classe par nom (nom &rarr; numéro). La <strong>zone inversée</strong>, c'est l'annuaire à l'envers : on connaît le numéro et on cherche le nom (numéro &rarr; nom).</p></div>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Zone DIRECTE : le carnet du domaine formation.local (nom -&gt; IP)</span>
+<span class="k">Add-DnsServerPrimaryZone</span> <span class="p">-Name</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-ZoneFile</span> <span class="s">&quot;formation.local.dns&quot;</span>
+
+<span class="c"># Zone INVERSÉE : l&#x27;annuaire à l&#x27;envers pour le réseau 192.168.100.0/24 (IP -&gt; nom)</span>
+<span class="k">Add-DnsServerPrimaryZone</span> <span class="p">-NetworkID</span> <span class="s">&quot;192.168.100.0/24&quot;</span> <span class="p">-ZoneFile</span> <span class="s">&quot;100.168.192.in-addr.arpa.dns&quot;</span>
+
+<span class="c"># Lister les zones créées</span>
+<span class="k">Get-DnsServerZone</span></code></pre></div>
+<div class="box warn"><span class="lbl">Le piège de la zone inversée</span><p>Le nom de la zone inversée s'écrit avec les octets du réseau <strong>à l'envers</strong>, suivis de <code class="inline">.in-addr.arpa</code>. Pour <code class="inline">192.168.100.0/24</code>, cela donne <code class="inline">100.168.192.in-addr.arpa</code>. C'est contre-intuitif, mais c'est ainsi que le DNS range les adresses pour les chercher par numéro.</p></div>
+<h2 class="sec" id="s4">Ajouter les enregistrements</h2>
+<p>On remplit maintenant le carnet. Chaque commande ajoute une ligne d'un type précis.</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># A : associe un nom à une IPv4</span>
+<span class="k">Add-DnsServerResourceRecordA</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> `
+                             <span class="p">-Name</span> <span class="s">&quot;srv-dc01&quot;</span> <span class="p">-IPv4Address</span> <span class="s">&quot;192.168.100.10&quot;</span>
+
+<span class="c"># CNAME : &quot;www&quot; est un alias qui renvoie vers srv-web.formation.local</span>
+<span class="k">Add-DnsServerResourceRecordCName</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> `
+                                 <span class="p">-Name</span> <span class="s">&quot;www&quot;</span> <span class="p">-HostNameAlias</span> <span class="s">&quot;srv-web.formation.local&quot;</span>
+
+<span class="c"># MX : pour le courrier de formation.local, s&#x27;adresser à mail.formation.local</span>
+<span class="k">Add-DnsServerResourceRecordMX</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> `
+                              <span class="p">-Name</span> <span class="s">&quot;.&quot;</span> <span class="p">-MailExchange</span> <span class="s">&quot;mail.formation.local&quot;</span> <span class="p">-Preference</span> <span class="num">10</span>
+
+<span class="c"># PTR : dans la zone inversée, le numéro .10 correspond à srv-dc01</span>
+<span class="k">Add-DnsServerResourceRecordPtr</span> <span class="p">-ZoneName</span> <span class="s">&quot;100.168.192.in-addr.arpa&quot;</span> `
+                               <span class="p">-Name</span> <span class="s">&quot;10&quot;</span> <span class="p">-PtrDomainName</span> <span class="s">&quot;srv-dc01.formation.local&quot;</span></code></pre></div>
+<div class="box warn"><span class="lbl">CNAME : ne pas pointer vers une IP</span><p>Un <strong>CNAME</strong> renvoie vers un <em>nom</em>, jamais vers une adresse IP. <code class="inline">-HostNameAlias</code> attend donc <code class="inline">srv-web.formation.local</code>, pas <code class="inline">192.168.100.30</code>. Le surnom pointe vers le vrai nom ; c'est le vrai nom (un enregistrement A) qui, lui, porte l'IP.</p></div>
+<div class="box note"><span class="lbl">À propos du MX et de la Preference</span><p><code class="inline">-Preference 10</code> est une priorité : plus le nombre est <em>bas</em>, plus le serveur est prioritaire. Avec un seul serveur de courrier, la valeur importe peu ; elle sert quand il y en a plusieurs.</p></div>
+<h2 class="sec" id="s5">Redirecteurs et cache</h2>
+<div class="box meta"><span class="lbl">Le standardiste qui appelle les renseignements</span><p>Votre DNS connaît <code class="inline">formation.local</code>, mais pas <code class="inline">google.com</code>. Plutôt que d'abandonner, il transmet la question à un <strong>redirecteur</strong> : un gros annuaire public (<code class="inline">8.8.8.8</code> chez Google, <code class="inline">1.1.1.1</code> chez Cloudflare). C'est le réflexe « je ne l'ai pas, je demande aux renseignements ».</p></div>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Rediriger les noms inconnus vers des DNS publics</span>
+<span class="k">Set-DnsServerForwarder</span> <span class="p">-IPAddress</span> <span class="s">&quot;8.8.8.8&quot;</span>,<span class="s">&quot;1.1.1.1&quot;</span>
+<span class="k">Get-DnsServerForwarder</span>
+
+<span class="c"># Régler le cache : durée max des réponses gardées en mémoire</span>
+<span class="k">Set-DnsServerCache</span> <span class="p">-MaxTTL</span> <span class="s">&quot;1.00:00:00&quot;</span> <span class="p">-MaxNegativeTTL</span> <span class="s">&quot;00:15:00&quot;</span></code></pre></div>
+<div class="box tip"><span class="lbl">Le cache, c'est le post-it</span><p><code class="inline">MaxTTL 1.00:00:00</code> = garder une réponse jusqu'à 1 jour. <code class="inline">MaxNegativeTTL 00:15:00</code> = se souvenir d'un échec 15 minutes seulement (au cas où le nom apparaîtrait bientôt). Le cache évite de redemander sans cesse la même chose : c'est l'optimisation principale du DNS.</p></div>
+<h2 class="sec" id="tp1">TP guidé 1 &mdash; DNS pour formation.local</h2>
+<p><strong>Objectif</strong> : monter un serveur DNS complet pour l'entreprise de formation. <strong>Durée</strong> : 60 min. <strong>Livrable</strong> : captures de la console DNS + résultats des tests.</p>
+<h3 class="sub" id="tp1-1">Étape 1 &mdash; Installer et démarrer</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Install-WindowsFeature</span> <span class="p">-Name</span> DNS <span class="p">-IncludeManagementTools</span>
+<span class="k">Get-Service</span> DNS          <span class="c"># doit afficher Running</span>
+dnsmgmt.msc              <span class="c"># ouvre la console DNS Manager</span></code></pre></div>
+<h3 class="sub" id="tp1-2">Étape 2 &mdash; Zones et enregistrements</h3>
+<p>Créez la zone directe, la zone inversée, puis les enregistrements demandés :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Add-DnsServerPrimaryZone</span> <span class="p">-Name</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-ZoneFile</span> <span class="s">&quot;formation.local.dns&quot;</span>
+<span class="k">Add-DnsServerPrimaryZone</span> <span class="p">-NetworkID</span> <span class="s">&quot;192.168.100.0/24&quot;</span> <span class="p">-ZoneFile</span> <span class="s">&quot;100.168.192.in-addr.arpa.dns&quot;</span>
+
+<span class="c"># Enregistrements A</span>
+<span class="k">Add-DnsServerResourceRecordA</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-Name</span> <span class="s">&quot;srv-dc01&quot;</span> <span class="p">-IPv4Address</span> <span class="s">&quot;192.168.100.10&quot;</span>
+<span class="k">Add-DnsServerResourceRecordA</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-Name</span> <span class="s">&quot;srv-file&quot;</span> <span class="p">-IPv4Address</span> <span class="s">&quot;192.168.100.20&quot;</span>
+<span class="k">Add-DnsServerResourceRecordA</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-Name</span> <span class="s">&quot;srv-web&quot;</span>  <span class="p">-IPv4Address</span> <span class="s">&quot;192.168.100.30&quot;</span>
+<span class="k">Add-DnsServerResourceRecordA</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-Name</span> <span class="s">&quot;mail&quot;</span>     <span class="p">-IPv4Address</span> <span class="s">&quot;192.168.100.25&quot;</span>
+
+<span class="c"># www = alias de srv-web ; MX pour le courrier</span>
+<span class="k">Add-DnsServerResourceRecordCName</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-Name</span> <span class="s">&quot;www&quot;</span> <span class="p">-HostNameAlias</span> <span class="s">&quot;srv-web.formation.local&quot;</span>
+<span class="k">Add-DnsServerResourceRecordMX</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-Name</span> <span class="s">&quot;.&quot;</span> <span class="p">-MailExchange</span> <span class="s">&quot;mail.formation.local&quot;</span> <span class="p">-Preference</span> <span class="num">10</span></code></pre></div>
+<h3 class="sub" id="tp1-3">Étape 3 &mdash; Redirecteurs</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Set-DnsServerForwarder</span> <span class="p">-IPAddress</span> <span class="s">&quot;8.8.8.8&quot;</span>,<span class="s">&quot;1.1.1.1&quot;</span>
+<span class="k">Resolve-DnsName</span> google.com   <span class="c"># doit résoudre grâce aux redirecteurs</span></code></pre></div>
+<h3 class="sub" id="tp1-4">Étape 4 &mdash; Tests de validation</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Resolve-DnsName</span> srv-dc01.formation.local            <span class="c"># nom -&gt; IP</span>
+<span class="k">Resolve-DnsName</span> <span class="s">&quot;192.168.100.10&quot;</span> <span class="p">-Type</span> PTR          <span class="c"># IP -&gt; nom (inverse)</span>
+<span class="k">Resolve-DnsName</span> www.formation.local                 <span class="c"># suit l&#x27;alias vers srv-web</span>
+<span class="k">Resolve-DnsName</span> formation.local <span class="p">-Type</span> MX            <span class="c"># serveur de courrier</span>
+<span class="k">Test-DnsServer</span> <span class="p">-IPAddress</span> <span class="s">&quot;127.0.0.1&quot;</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span></code></pre></div>
+<div class="box key"><span class="lbl">Critères de réussite</span><p>Les quatre <code class="inline">Resolve-DnsName</code> renvoient une réponse cohérente, la résolution inverse retrouve bien <code class="inline">srv-dc01</code>, et <code class="inline">google.com</code> se résout via les redirecteurs.</p></div>
+<h2 class="sec" id="s6">DHCP &mdash; distribuer les adresses automatiquement</h2>
+<div class="box meta"><span class="lbl">La métaphore de l'hôtel</span><p>Le <strong>DHCP</strong> (<em>Dynamic Host Configuration Protocol</em>, « protocole de configuration dynamique des hôtes »), c'est la <strong>réception d'un hôtel</strong>. À son arrivée, un client n'a pas de chambre. Il demande à la réception, qui lui en attribue une de libre, pour une durée donnée (le <strong>bail</strong>), avec le petit livret d'accueil (les <strong>options</strong> : où est la sortie/passerelle, le numéro du standard/DNS&hellip;). Quand le client repart, la chambre redevient disponible.</p></div>
+<h3 class="sub" id="s6-1">Le dialogue DORA</h3>
+<p>L'attribution suit quatre échanges, dont on retient l'acronyme <strong>DORA</strong> :</p>
+<div class="diagram"><code>   D  Discover   Client  -&gt; &quot;Quelqu&#x27;un peut me donner une adresse ?&quot;   (diffusion)
+   O  Offer      Serveur -&gt; &quot;Je te propose 192.168.100.50&quot;            (proposition)
+   R  Request    Client  -&gt; &quot;D&#x27;accord, je prends 192.168.100.50&quot;      (demande)
+   A  Acknowledge Serveur -&gt; &quot;C&#x27;est noté&quot; + options (DNS, passerelle)  (confirmation)</code></div>
+<div class="box key"><span class="lbl">Pourquoi un serveur ne prend jamais d'adresse DHCP</span><p>DHCP est fait pour les <em>clients de passage</em> (postes, portables). Un <strong>serveur</strong>, lui, est une chambre permanente : il garde son IP statique. On distribue par DHCP aux clients, jamais aux serveurs.</p></div>
+<h2 class="sec" id="s7">Installer le rôle DHCP</h2>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Installer le rôle DHCP avec ses outils</span>
+<span class="k">Install-WindowsFeature</span> DHCP <span class="p">-IncludeManagementTools</span>
+<span class="k">Get-Service</span> DHCPServer        <span class="c"># doit être Running</span>
+
+<span class="c"># Redémarrer le service après configuration</span>
+<span class="k">Restart-Service</span> DHCPServer</code></pre></div>
+<div class="box note"><span class="lbl">« Autorisation » DHCP : pour plus tard</span><p>Dans un domaine Active Directory, un serveur DHCP doit être <strong>autorisé</strong> avant de distribuer (sécurité anti-serveur pirate). Comme AD n'existe qu'au Jour 3, on travaille pour l'instant en mode autonome (hors domaine), où cette autorisation n'est pas requise. La commande <code class="inline">Add-DhcpServerInDC</code> sera vue au Jour 3.</p></div>
+<h2 class="sec" id="s8">Étendues, options et réservations</h2>
+<div class="box meta"><span class="lbl">L'étage, le livret, la chambre attitrée</span><p>Une <strong>étendue</strong> (<em>scope</em>) est l'<em>étage de chambres</em> que la réception a le droit de distribuer (une plage d'adresses). Les <strong>options</strong> sont le <em>livret d'accueil</em> remis avec la chambre (passerelle, DNS, suffixe). Une <strong>réservation</strong> dit « la chambre 25 est <em>toujours</em> pour M. Imprimante » : la même IP pour la même machine, identifiée par son adresse MAC.</p></div>
+<h3 class="sub" id="s8-1">Créer une étendue et ses options</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># L&#x27;étage de chambres distribuables : .50 à .200</span>
+Add-DhcpServerv4Scope <span class="p">-Name</span> <span class="s">&quot;Réseau Formation&quot;</span> `
+                      <span class="p">-StartRange</span> <span class="s">&quot;192.168.100.50&quot;</span> `
+                      <span class="p">-EndRange</span> <span class="s">&quot;192.168.100.200&quot;</span> `
+                      <span class="p">-SubnetMask</span> <span class="s">&quot;255.255.255.0&quot;</span> `
+                      <span class="p">-Description</span> <span class="s">&quot;Postes de travail&quot;</span>
+
+<span class="c"># Le livret d&#x27;accueil (options), désigné par un numéro normalisé :</span>
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-OptionId</span> <span class="num">3</span>  <span class="p">-Value</span> <span class="s">&quot;192.168.100.1&quot;</span>          <span class="c"># 3  = passerelle</span>
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-OptionId</span> <span class="num">6</span>  <span class="p">-Value</span> <span class="s">&quot;192.168.100.10&quot;</span>,<span class="s">&quot;8.8.8.8&quot;</span> <span class="c"># 6  = serveurs DNS</span>
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-OptionId</span> <span class="num">15</span> <span class="p">-Value</span> <span class="s">&quot;formation.local&quot;</span>          <span class="c"># 15 = suffixe DNS</span>
+
+<span class="c"># Ouvrir l&#x27;étage (activer l&#x27;étendue)</span>
+Set-DhcpServerv4Scope <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-State</span> Active</code></pre></div>
+<p><em>Analysons les options clés :</em></p>
+
+    <ul>
+      <li><strong>Option 3</strong> &mdash; la <em>passerelle</em> par défaut : la sortie de l'immeuble vers les autres réseaux.</li>
+      <li><strong>Option 6</strong> &mdash; les <em>serveurs DNS</em> : à qui le client posera ses questions de noms.</li>
+      <li><strong>Option 15</strong> &mdash; le <em>suffixe DNS</em> : ce qu'on ajoute aux noms courts (taper <code class="inline">srv-web</code> devient <code class="inline">srv-web.formation.local</code>).</li>
+    </ul>
+
+<h3 class="sub" id="s8-2">Réservations et exclusions</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Réservation : SRV-FILE aura TOUJOURS .20 (identifié par sa MAC)</span>
+Add-DhcpServerv4Reservation <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> `
+                            <span class="p">-IPAddress</span> <span class="s">&quot;192.168.100.20&quot;</span> `
+                            <span class="p">-ClientId</span> <span class="s">&quot;00-15-5D-00-00-01&quot;</span> `
+                            <span class="p">-Name</span> <span class="s">&quot;SRV-FILE&quot;</span> <span class="p">-Description</span> <span class="s">&quot;Serveur de fichiers&quot;</span>
+
+<span class="c"># Exclusion : ne JAMAIS distribuer .10 à .20 (réservé aux serveurs statiques)</span>
+Add-DhcpServerv4ExclusionRange <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> `
+                               <span class="p">-StartRange</span> <span class="s">&quot;192.168.100.10&quot;</span> <span class="p">-EndRange</span> <span class="s">&quot;192.168.100.20&quot;</span>
+
+<span class="c"># Bail de 8 jours</span>
+Set-DhcpServerv4Scope <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-LeaseDuration</span> <span class="s">&quot;8.00:00:00&quot;</span></code></pre></div>
+<div class="box warn"><span class="lbl">Réservation contre exclusion : ne pas confondre</span><p>Une <strong>réservation</strong> attribue une IP <em>fixe</em> à une machine via DHCP (la chambre attitrée). Une <strong>exclusion</strong> retire des adresses de la distribution (chambres réservées au personnel, jamais louées). Une IP statique posée à la main <em>dans</em> la plage DHCP, sans exclusion, provoque tôt ou tard un <strong>conflit d'adresses</strong>.</p></div>
+<h2 class="sec" id="tp2">TP guidé 2 &mdash; DHCP multi-réseaux</h2>
+<p><strong>Objectif</strong> : un service DHCP complet pour un centre de formation à plusieurs zones. <strong>Durée</strong> : 75 min.</p>
+
+    <table>
+      <thead><tr><th>Réseau</th><th>Plage distribuée</th><th>Bail</th><th>DNS</th><th>Passerelle</th></tr></thead>
+      <tbody>
+        <tr><td>Administration <code>192.168.100.0/24</code></td><td>.50 &rarr; .200 (exclure .10&ndash;.20)</td><td>7 jours</td><td>.10 / 8.8.8.8</td><td>.1</td></tr>
+        <tr><td>Stagiaires <code>192.168.101.0/24</code></td><td>.20 &rarr; .200</td><td>1 jour</td><td>100.10 / 1.1.1.1</td><td>101.1</td></tr>
+        <tr><td>Invités <code>192.168.102.0/24</code></td><td>(bonus)</td><td>court</td><td>public</td><td>102.1</td></tr>
+      </tbody>
+    </table>
+
+<h3 class="sub" id="tp2-1">Étape 1 &mdash; Étendue Administration</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code>Add-DhcpServerv4Scope <span class="p">-Name</span> <span class="s">&quot;Administration&quot;</span> <span class="p">-StartRange</span> <span class="s">&quot;192.168.100.50&quot;</span> `
+                      <span class="p">-EndRange</span> <span class="s">&quot;192.168.100.200&quot;</span> <span class="p">-SubnetMask</span> <span class="s">&quot;255.255.255.0&quot;</span>
+Add-DhcpServerv4ExclusionRange <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-StartRange</span> <span class="s">&quot;192.168.100.10&quot;</span> <span class="p">-EndRange</span> <span class="s">&quot;192.168.100.20&quot;</span>
+Set-DhcpServerv4Scope <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-LeaseDuration</span> <span class="s">&quot;7.00:00:00&quot;</span> <span class="p">-State</span> Active
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-OptionId</span> <span class="num">3</span> <span class="p">-Value</span> <span class="s">&quot;192.168.100.1&quot;</span>
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-OptionId</span> <span class="num">6</span> <span class="p">-Value</span> <span class="s">&quot;192.168.100.10&quot;</span>,<span class="s">&quot;8.8.8.8&quot;</span></code></pre></div>
+<h3 class="sub" id="tp2-2">Étape 2 &mdash; Étendue Stagiaires</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code>Add-DhcpServerv4Scope <span class="p">-Name</span> <span class="s">&quot;Stagiaires&quot;</span> <span class="p">-StartRange</span> <span class="s">&quot;192.168.101.20&quot;</span> `
+                      <span class="p">-EndRange</span> <span class="s">&quot;192.168.101.200&quot;</span> <span class="p">-SubnetMask</span> <span class="s">&quot;255.255.255.0&quot;</span>
+Set-DhcpServerv4Scope <span class="p">-ScopeId</span> <span class="s">&quot;192.168.101.0&quot;</span> <span class="p">-LeaseDuration</span> <span class="s">&quot;1.00:00:00&quot;</span> <span class="p">-State</span> Active
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.101.0&quot;</span> <span class="p">-OptionId</span> <span class="num">3</span> <span class="p">-Value</span> <span class="s">&quot;192.168.101.1&quot;</span>
+Set-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.101.0&quot;</span> <span class="p">-OptionId</span> <span class="num">6</span> <span class="p">-Value</span> <span class="s">&quot;192.168.100.10&quot;</span>,<span class="s">&quot;1.1.1.1&quot;</span></code></pre></div>
+<h3 class="sub" id="tp2-3">Étape 3 &mdash; Réservations &amp; vérifications</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code>Add-DhcpServerv4Reservation <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-IPAddress</span> <span class="s">&quot;192.168.100.25&quot;</span> <span class="p">-ClientId</span> <span class="s">&quot;00-15-5D-00-00-10&quot;</span> <span class="p">-Name</span> <span class="s">&quot;IMPRIMANTE&quot;</span>
+Add-DhcpServerv4Reservation <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="p">-IPAddress</span> <span class="s">&quot;192.168.100.30&quot;</span> <span class="p">-ClientId</span> <span class="s">&quot;00-15-5D-00-00-11&quot;</span> <span class="p">-Name</span> <span class="s">&quot;BORNE-WIFI&quot;</span>
+
+Get-DhcpServerv4Scope                          <span class="c"># liste des étendues</span>
+Get-DhcpServerv4OptionValue <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span>
+Get-DhcpServerv4Lease <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span> <span class="c"># baux attribués</span>
+Get-DhcpServerv4Statistics                     <span class="c"># vue d&#x27;ensemble</span></code></pre></div>
+<div class="box tip"><span class="lbl">Tester côté client</span><p>Sur une VM cliente en DHCP : <code class="inline">ipconfig /release</code> puis <code class="inline">ipconfig /renew</code> force une nouvelle négociation DORA. <code class="inline">ipconfig /all</code> montre l'IP reçue <em>et</em> les options (passerelle, DNS, suffixe, durée du bail).</p></div>
+<h2 class="sec" id="s9">Intégration DNS / DHCP</h2>
+<div class="box meta"><span class="lbl">La réception qui prévient le standard</span><p>Quand la réception (DHCP) attribue une chambre à un nouveau client, elle peut <strong>prévenir l'annuaire</strong> (DNS) : « la machine <em>client-01</em> est désormais en .50 ». C'est la <strong>mise à jour dynamique</strong> : les clients DHCP s'inscrivent tout seuls dans le DNS, sans qu'on ait à créer chaque enregistrement à la main.</p></div>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Autoriser la zone à accepter les mises à jour (mode sécurisé)</span>
+<span class="k">Set-DnsServerPrimaryZone</span> <span class="p">-Name</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-DynamicUpdate</span> Secure
+
+<span class="c"># Dire au DHCP de mettre à jour le DNS à chaque bail</span>
+Set-DhcpServerv4DnsSetting <span class="p">-DynamicUpdates</span> Always `
+                           <span class="p">-DeleteDnsRROnLeaseExpiry</span> <span class="v">$true</span> `
+                           <span class="p">-UpdateDnsRRForOlderClients</span> <span class="v">$true</span>
+
+Get-DhcpServerv4DnsSetting   <span class="c"># vérifier les paramètres</span></code></pre></div>
+<p><em>Analysons les paramètres :</em></p>
+
+    <ul>
+      <li><code class="inline">-DynamicUpdates Always</code> : le DHCP inscrit toujours le client dans le DNS.</li>
+      <li><code class="inline">-DeleteDnsRROnLeaseExpiry $true</code> : quand le bail expire, l'enregistrement DNS est supprimé (l'annuaire reste propre).</li>
+      <li><code class="inline">-UpdateDnsRRForOlderClients $true</code> : prend aussi en charge les anciens clients qui ne savent pas s'inscrire eux-mêmes.</li>
+    </ul>
+
+<div class="box note"><span class="lbl">Les valeurs vrai/faux en PowerShell</span><p>On écrit <code class="inline">$true</code> et <code class="inline">$false</code>, avec le dollar et une minuscule. C'est une convention stricte du langage.</p></div>
+<h2 class="sec" id="tp3">TP guidé 3 &mdash; intégration complète</h2>
+<p><strong>Objectif</strong> : un client DHCP s'enregistre tout seul dans le DNS. <strong>Durée</strong> : 60 min.</p>
+
+    <ol>
+      <li>Vérifier que la zone <code class="inline">formation.local</code> accepte les mises à jour (<code class="inline">Secure</code>) et que l'étendue <code class="inline">192.168.100.0</code> est active.</li>
+      <li>Démarrer une VM cliente Windows configurée en <strong>DHCP</strong> (les deux cartes : NAT + réseau interne, comme au Jour 1).</li>
+      <li>Sur le client : <code class="inline">ipconfig /renew</code> pour obtenir une adresse de l'étendue.</li>
+      <li>Sur le serveur : vérifier que le client est apparu dans le DNS.</li>
+    </ol>
+
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Côté serveur : le client doit maintenant exister dans la zone</span>
+<span class="k">Resolve-DnsName</span> <span class="s">&quot;client-01.formation.local&quot;</span>
+<span class="k">Get-DnsServerResourceRecord</span> <span class="p">-ZoneName</span> <span class="s">&quot;formation.local&quot;</span> <span class="p">-RRType</span> A
+
+<span class="c"># Et son bail figure côté DHCP</span>
+Get-DhcpServerv4Lease <span class="p">-ScopeId</span> <span class="s">&quot;192.168.100.0&quot;</span></code></pre></div>
+<p>Petit script de contrôle global, à faire tourner sur le serveur :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="v">$TestResults</span> = @()
+<span class="v">$TestResults</span> += <span class="s">&quot;DNS Service : &quot;</span>  + (<span class="k">Get-Service</span> DNS).Status
+<span class="v">$TestResults</span> += <span class="s">&quot;DHCP Service : &quot;</span> + (<span class="k">Get-Service</span> DHCPServer).Status
+try   { <span class="k">Resolve-DnsName</span> formation.local <span class="p">-ErrorAction</span> Stop | <span class="k">Out-Null</span>; <span class="v">$TestResults</span> += <span class="s">&quot;DNS Resolution : SUCCESS&quot;</span> }
+catch { <span class="v">$TestResults</span> += <span class="s">&quot;DNS Resolution : FAILED&quot;</span> }
+<span class="v">$TestResults</span> += <span class="s">&quot;DHCP baux actifs : &quot;</span> + (Get-DhcpServerv4Statistics).InUse
+<span class="v">$TestResults</span> | <span class="k">ForEach-Object</span> { <span class="k">Write-Host</span> <span class="v">$_</span> <span class="p">-ForegroundColor</span> Green }</code></pre></div>
+<h2 class="sec" id="s10">Diagnostic réseau</h2>
+<div class="box meta"><span class="lbl">Le médecin qui ausculte par étages</span><p>Diagnostiquer un réseau, c'est <strong>ausculter de l'intérieur vers l'extérieur</strong>, comme un médecin qui part du cœur vers les extrémités. On vérifie d'abord que la machine se parle à elle-même, puis qu'elle joint sa passerelle, puis Internet, puis que les <em>noms</em> se résolvent. Dès qu'une étape échoue, on a trouvé l'étage en panne.</p></div>
+<h3 class="sub" id="s10-1">Les commandes essentielles</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code>ipconfig /all          <span class="c"># configuration IP complète (IP, passerelle, DNS, bail)</span>
+ipconfig /flushdns     <span class="c"># vider le cache DNS du client</span>
+ping <span class="num">8.8.8.8</span>           <span class="c"># connectivité brute (sans DNS)</span>
+tracert google.com     <span class="c"># le chemin suivi, routeur par routeur</span>
+pathping <span class="num">8.8.8.8</span>       <span class="c"># tracert + statistiques de perte</span>
+nslookup formation.local           <span class="c"># interroger le DNS</span>
+nslookup <span class="p">-type</span>=MX formation.local  <span class="c"># tester un type précis</span>
+netstat <span class="p">-an</span>            <span class="c"># connexions et ports en écoute</span>
+arp <span class="p">-a</span>                 <span class="c"># cache des adresses MAC connues</span></code></pre></div>
+<h3 class="sub" id="s10-2">Les équivalents PowerShell</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Resolve-DnsName</span> formation.local <span class="p">-Type</span> A    <span class="c"># remplace nslookup, plus riche</span>
+<span class="k">Test-NetConnection</span> google.com <span class="p">-Port</span> <span class="num">80</span>     <span class="c"># teste IP + port + route</span>
+<span class="k">Get-NetIPConfiguration</span>                     <span class="c"># remplace ipconfig</span>
+<span class="k">Get-NetRoute</span> <span class="p">-DestinationPrefix</span> <span class="s">&quot;0.0.0.0/0&quot;</span> <span class="c"># la route par défaut</span>
+<span class="k">Get-NetTCPConnection</span> | <span class="k">Where-Object</span> State <span class="p">-eq</span> <span class="s">&quot;Established&quot;</span>
+<span class="k">Get-NetNeighbor</span>                            <span class="c"># remplace arp -a</span></code></pre></div>
+<div class="box warn"><span class="lbl">Une commande à NE PAS lancer à l'aveugle</span><p>On voit parfois <code class="inline">Get-NetAdapter | Disable-NetAdapter</code> pour « réinitialiser » une carte. Sur une session distante, cela <strong>coupe votre propre connexion</strong> et vous laisse dehors. Ne désactivez une carte qu'en étant physiquement (ou en console) sur la machine.</p></div>
+<h3 class="sub" id="s10-3">Outils graphiques</h3>
+
+    <ul>
+      <li><strong>Performance Monitor</strong> (<code class="inline">perfmon</code>) : courbes de débit réseau dans le temps (compteur <em>Network Interface &rarr; Bytes Total/sec</em>).</li>
+      <li><strong>Resource Monitor</strong> (<code class="inline">resmon</code>) : quel <em>processus</em> consomme le réseau, en temps réel (onglet <em>Réseau</em>).</li>
+    </ul>
+
+<h2 class="sec" id="tp4">TP guidé 4 &mdash; trois pannes à résoudre</h2>
+<p><strong>Objectif</strong> : appliquer la méthode par couches. <strong>Durée</strong> : 90 min. Pour chaque scénario : identifier l'étage en panne, corriger, valider, documenter.</p>
+<h3 class="sub" id="tp4-0">La méthode, dans l'ordre</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code>ping <span class="num">127.0.0.1</span>          <span class="c"># 1. la machine se parle-t-elle à elle-même ?</span>
+ping <span class="num">192.168.100.1</span>      <span class="c"># 2. joint-elle sa passerelle ?</span>
+ping <span class="num">8.8.8.8</span>            <span class="c"># 3. atteint-elle Internet (par IP) ?</span>
+nslookup google.com     <span class="c"># 4. les NOMS se résolvent-ils ?</span></code></pre></div>
+<div class="box key"><span class="lbl">Lire le résultat</span><p>La <strong>première</strong> étape qui échoue désigne le problème. Internet par IP qui marche mais les noms qui échouent &rarr; c'est le <strong>DNS</strong>. Passerelle injoignable &rarr; <strong>routage</strong>. Connectivité intermittente avec messages d'IP &rarr; <strong>conflit d'adresses</strong>.</p></div>
+
+    <h3 class="sub" id="tp4-1">Scénario 1 &mdash; résolution DNS</h3>
+    <p><strong>Symptôme</strong> : les sites sont injoignables par nom, mais l'IP fonctionne. <strong>Outils</strong> : <code class="inline">nslookup</code>, <code class="inline">ipconfig /all</code>, <code class="inline">Test-DnsServer</code>. <strong>Piste</strong> : un mauvais serveur DNS dans la configuration du client (option 6 erronée, ou DNS local en panne).</p>
+    <h3 class="sub" id="tp4-2">Scénario 2 &mdash; conflit d'adresses IP</h3>
+    <p><strong>Symptôme</strong> : connectivité intermittente, message « adresse IP en double ». <strong>Outils</strong> : <code class="inline">ping</code>, <code class="inline">arp -a</code>, <code class="inline">Get-DhcpServerv4Lease</code>. <strong>Piste</strong> : une IP statique posée à la main dans la plage DHCP, sans exclusion (revoir &sect;8.2).</p>
+    <h3 class="sub" id="tp4-3">Scénario 3 &mdash; routage</h3>
+    <p><strong>Symptôme</strong> : le réseau local fonctionne, mais pas Internet. <strong>Outils</strong> : <code class="inline">tracert</code>, <code class="inline">pathping</code>, <code class="inline">Get-NetRoute</code>. <strong>Piste</strong> : passerelle incorrecte ou injoignable (option 3 erronée).</p>
+
+<p>Collecte automatique des informations, à joindre au rapport :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code>ipconfig /all                                   &gt; diagnostic.txt
+<span class="k">Get-NetIPConfiguration</span>                         &gt;&gt; diagnostic.txt
+<span class="k">Get-DnsClientServerAddress</span>                     &gt;&gt; diagnostic.txt
+<span class="k">Get-NetRoute</span> <span class="p">-DestinationPrefix</span> <span class="s">&quot;0.0.0.0/0&quot;</span>    &gt;&gt; diagnostic.txt</code></pre></div>
+<h2 class="sec" id="recap">Ce qu'il faut retenir</h2>
+
+    <table class="recap">
+      <thead><tr><th>Notion</th><th>L'essentiel</th></tr></thead>
+      <tbody>
+        <tr><td>DNS</td><td>L'annuaire du réseau : nom &rarr; IP. Zone directe (par nom), zone inversée (par numéro), cache, redirecteurs.</td></tr>
+        <tr><td>Enregistrements</td><td>A (IPv4), CNAME (alias vers un nom), MX (courrier), PTR (inverse), SRV (services, clé pour AD).</td></tr>
+        <tr><td>Installer un rôle</td><td><code>Install-WindowsFeature -Name &lt;rôle&gt; -IncludeManagementTools</code>.</td></tr>
+        <tr><td>DHCP / DORA</td><td>Discover, Offer, Request, Acknowledge. Distribue aux clients ; jamais aux serveurs.</td></tr>
+        <tr><td>Étendue / options</td><td>Plage distribuée + livret d'accueil : option 3 (passerelle), 6 (DNS), 15 (suffixe).</td></tr>
+        <tr><td>Réservation / exclusion</td><td>Réservation = IP fixe par MAC ; exclusion = retirer des IP de la distribution.</td></tr>
+        <tr><td>Intégration</td><td>Mise à jour dynamique : les clients DHCP s'inscrivent seuls dans le DNS.</td></tr>
+        <tr><td>Diagnostic</td><td>Par couches : 127.0.0.1 &rarr; passerelle &rarr; 8.8.8.8 &rarr; nslookup. La 1ʳᵉ étape qui casse désigne la panne.</td></tr>
+      </tbody>
+    </table>
+
+<h2 class="sec" id="reflexes">Réflexes &amp; contrôle</h2>
+<div class="box key"><span class="lbl">Réflexes anti-erreur</span><ul><li>Zone inversée &rarr; octets du réseau <strong>à l'envers</strong> + <code class="inline">.in-addr.arpa</code>.</li><li>CNAME &rarr; pointe vers un <strong>nom</strong>, jamais une IP.</li><li>IP statique dans une plage DHCP &rarr; <strong>exclusion</strong> obligatoire, sinon conflit.</li><li><code class="inline">$true</code>/<code class="inline">$false</code> : dollar + minuscule.</li><li>Continuation de ligne PowerShell &rarr; backtick <code class="inline">`</code>, pas l'antislash.</li></ul></div>
+
+    <p>À préparer pour le Jour 3 :</p>
+    <ol>
+      <li>Pourquoi un serveur garde-t-il une IP statique alors qu'il distribue du DHCP ?</li>
+      <li>Quelle est la différence entre une réservation et une exclusion ?</li>
+      <li>À quoi servent les enregistrements SRV, et pourquoi seront-ils importants avec Active Directory ?</li>
+      <li>Dans la méthode de diagnostic, que signifie « Internet par IP fonctionne mais pas par nom » ?</li>
+    </ol>
+
+  </main>
+</div>
+
+<footer>J2_DNS_DHCP_Diagnostic — Support de cours</footer>
+
+</body>
+</html>

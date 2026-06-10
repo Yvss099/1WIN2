@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jour 1 — Windows Server 2022 : réseau & IP statique</title>
+<style>
+  :root{
+    --accent:#0078d4; --accent-d:#005fb8;
+    --desktop:#eaeef4; --surface:#ffffff; --mica:#f7f9fc;
+    --ink:#1b1b1b; --ink-soft:#383838; --muted:#5d5d5d;
+    --line:#e2e6ec; --line-soft:#edf0f4;
+    --hero:#0a59b0; --hero2:#0c4f9c;
+    /* PowerShell console */
+    --ps-bg:#012456; --ps-bar:#0a1f47; --ps-text:#e8e8e8;
+    --c-com:#57a64a; --c-kw:#dcdcaa; --c-str:#ce9178; --c-par:#9cdcfe; --c-num:#b5cea8;
+    /* Fluent InfoBars */
+    --warn-bg:#fff4ce; --warn-bd:#9d5d00;
+    --tip-bg:#f0f6ff;  --tip-bd:#0078d4;
+    --note-bg:#f4f1fb; --note-bd:#6b4fbb;
+    --key-bg:#dff6dd;  --key-bd:#0f7b0f;
+    --meta-bg:#eef3fb; --meta-bd:#5b5fc7;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--desktop); color:var(--ink);
+    font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  code,kbd,pre{font-family:"Cascadia Code","Cascadia Mono",Consolas,"SFMono-Regular",ui-monospace,monospace}
+
+  /* ---------- Window title bar ---------- */
+  .winbar{
+    position:sticky; top:0; z-index:30; height:36px; display:flex; align-items:center;
+    background:var(--mica); border-bottom:1px solid var(--line);
+    padding-left:12px; font-size:.8rem; color:var(--ink-soft);
+  }
+  .winbar .wlogo{display:flex; gap:1.5px; margin-right:9px}
+  .winbar .wlogo i{width:7px; height:7px; background:var(--accent); display:block}
+  .winbar .wtitle{flex:1 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted)}
+  .winbar .caps{display:flex; height:36px}
+  .winbar .cap{width:46px; height:36px; display:flex; align-items:center; justify-content:center; cursor:default}
+  .winbar .cap:hover{background:#e3e7ee}
+  .winbar .cap.close:hover{background:#c42b1c; color:#fff}
+  .cap.min i{width:10px; height:1px; background:currentColor; display:block}
+  .cap.max i{width:9px; height:9px; border:1px solid currentColor; display:block; border-radius:1px}
+  .cap.close i{font-style:normal; font-size:.82rem; line-height:1}
+
+  /* ---------- Hero ---------- */
+  header.hero{
+    background:var(--hero); color:#fff; padding:30px 20px 28px; border-bottom:1px solid var(--hero2);
+  }
+  .hero-inner{max-width:1180px; margin:0 auto}
+  .brand{display:flex; align-items:center; gap:9px; margin:0 0 14px; font-weight:600; font-size:.92rem; color:#dbe9fb}
+  .brand .blogo{display:flex; gap:2px}
+  .brand .blogo i{width:9px; height:9px; background:#fff; display:block}
+  .eyebrow{font-size:.76rem; letter-spacing:.12em; text-transform:uppercase; color:#a9c8ee; margin:0 0 8px}
+  .hero h1{margin:0 0 6px; font-size:1.8rem; line-height:1.18; font-weight:650}
+  .hero p.sub{margin:0; color:#cfe0f6; font-size:1rem}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1180px; margin:0 auto; display:flex; gap:30px; padding:0 20px; background:var(--surface)}
+  nav.toc{
+    flex:0 0 252px; position:sticky; top:36px; align-self:flex-start;
+    max-height:calc(100vh - 36px); overflow-y:auto; padding:22px 8px 40px;
+  }
+  nav.toc .toc-title{font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; padding-left:12px; font-weight:600}
+  nav.toc ol{list-style:none; margin:0; padding:0; counter-reset:toc}
+  nav.toc a{
+    counter-increment:toc; display:block; text-decoration:none; color:var(--ink-soft);
+    font-size:.88rem; padding:7px 10px 7px 34px; border-radius:6px; position:relative; margin:1px 0;
+  }
+  nav.toc a::before{content:counter(toc); position:absolute; left:12px; color:var(--muted); font-variant-numeric:tabular-nums; font-size:.78rem; top:7px}
+  nav.toc a::after{content:""; position:absolute; left:3px; top:50%; transform:translateY(-50%); width:3px; height:0; background:var(--accent); border-radius:3px; transition:height .12s ease}
+  nav.toc a:hover{background:#eef3fb; color:var(--accent-d)}
+  nav.toc a:hover::after{height:16px}
+
+  main{flex:1 1 auto; max-width:800px; padding:28px 0 80px; min-width:0; border-left:1px solid var(--line-soft); padding-left:30px}
+
+  .programme{background:var(--mica); border:1px solid var(--line); border-radius:8px; padding:16px 20px; margin:0 0 14px}
+  .programme h2{margin:0 0 8px; font-size:1rem}
+  .programme h2::before{content:none !important}
+  .programme ol{margin:0; padding-left:22px}
+  .prereq{font-size:.93rem; color:var(--ink-soft)}
+
+  /* ---------- Section numbering ---------- */
+  main{counter-reset:h2}
+  h2.sec{
+    counter-reset:h3; counter-increment:h2; font-size:1.36rem; font-weight:650; margin:40px 0 6px;
+    padding-bottom:8px; border-bottom:2px solid var(--line); scroll-margin-top:48px;
+  }
+  h2.sec::before{content:counter(h2) ". "; color:var(--accent); font-weight:700}
+  h3.sub{counter-increment:h3; font-size:1.06rem; font-weight:650; margin:24px 0 6px; scroll-margin-top:48px}
+  h3.sub::before{content:counter(h2) "." counter(h3) "  "; color:var(--accent); font-weight:600}
+  p{margin:10px 0} ul,ol{padding-left:24px} li{margin:4px 0}
+  strong{font-weight:650}
+  code.inline{background:#f1f3f7; border:1px solid #e1e5ec; border-radius:4px; padding:1px 5px; font-size:.85em; color:#0b3b73}
+
+  /* ---------- PowerShell console ---------- */
+  .ps{margin:14px 0; border-radius:8px; overflow:hidden; border:1px solid #0a1f47; box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .ps-bar{
+    background:var(--ps-bar); color:#cfd8ea; font-size:.76rem; padding:6px 12px;
+    display:flex; align-items:center; gap:8px; font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  }
+  .ps-ico{width:10px; height:10px; border-radius:2px; background:linear-gradient(135deg,#3a7bd5,#0a59b0); flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  .ps pre{margin:0; background:var(--ps-bg); color:var(--ps-text); border:none; border-radius:0; padding:13px 16px; overflow-x:auto; font-size:.84rem; line-height:1.55}
+  pre code{white-space:pre}
+  .c{color:var(--c-com); font-style:italic}
+  .k{color:var(--c-kw)} .s{color:var(--c-str)} .p{color:var(--c-par)} .num{color:var(--c-num)}
+
+  /* ---------- Callouts (Fluent InfoBar) ---------- */
+  .box{border:1px solid var(--line); border-left-width:4px; border-radius:6px; padding:12px 16px; margin:14px 0; font-size:.94rem}
+  .box p{margin:6px 0} .box p:first-child{margin-top:0} .box p:last-child{margin-bottom:0}
+  .box .lbl{font-weight:700; display:block; margin-bottom:3px}
+  .warn{background:var(--warn-bg); border-color:#f2e6b0; border-left-color:var(--warn-bd)}
+  .warn .lbl{color:#7a4a00}
+  .tip {background:var(--tip-bg);  border-color:#d4e4fb; border-left-color:var(--tip-bd)} .tip .lbl{color:#005fb8}
+  .note{background:var(--note-bg); border-color:#e2daf4; border-left-color:var(--note-bd)} .note .lbl{color:#523a99}
+  .key {background:var(--key-bg);  border-color:#c4ecc0; border-left-color:var(--key-bd)} .key .lbl{color:#0c5e0c}
+  .meta{background:var(--meta-bg); border-color:#d7def0; border-left-color:var(--meta-bd)} .meta .lbl{color:#3f43a8}
+
+  /* ---------- Diagram (console-styled) ---------- */
+  .diagram{
+    background:var(--ps-bg); color:#cdd6e6; border:1px solid #0a1f47; border-radius:8px;
+    padding:18px 16px; margin:16px 0; font-size:.8rem; line-height:1.45; overflow-x:auto;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+  }
+  .diagram .nat{color:#6ee7b7} .diagram .int{color:#9cdcfe} .diagram .lab{color:#dcdcaa}
+
+  /* ---------- Tables ---------- */
+  table{border-collapse:collapse; width:100%; margin:14px 0; font-size:.91rem}
+  th,td{border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top}
+  th{background:var(--mica); font-weight:650}
+  tbody tr:nth-child(even){background:#fafcfe}
+  td code{font-size:.85em}
+  .recap th{background:var(--accent); color:#fff; border-color:var(--accent-d)}
+
+  hr{border:none; border-top:1px solid var(--line); margin:34px 0}
+  footer{background:var(--mica); border-top:1px solid var(--line); padding:16px 20px; color:var(--muted); font-size:.84rem; text-align:center}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:880px){
+    .wrap{flex-direction:column; gap:0}
+    nav.toc{position:static; max-height:none; flex-basis:auto; padding:16px 8px 4px; border-bottom:1px solid var(--line); margin-bottom:6px}
+    nav.toc ol{display:flex; flex-wrap:wrap; gap:4px; counter-reset:toc}
+    nav.toc a{padding:6px 12px 6px 28px; border:1px solid var(--line); border-radius:999px; font-size:.8rem; margin:0}
+    nav.toc a::before{top:6px}
+    nav.toc a::after{display:none}
+    main{padding-left:0; border-left:none; padding-top:16px}
+    .hero h1{font-size:1.42rem}
+    .winbar .wtitle{font-size:.74rem}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<div class="winbar">
+  <span class="wlogo"><i></i><i></i><i></i><i></i></span>
+  <span class="wtitle">J1_WindowsServer_IP_statique — Support de cours</span>
+  <span class="caps">
+    <span class="cap min"><i></i></span>
+    <span class="cap max"><i></i></span>
+    <span class="cap close"><i>✕</i></span>
+  </span>
+</div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="brand"><span class="blogo"><i></i><i></i><i></i><i></i></span>Windows Server 2022</div>
+    <p class="eyebrow">Module 1WIN2 · Jour 1</p>
+    <h1>Configuration réseau & adresse IP statique</h1>
+    <p class="sub">Installer un serveur propre, lui donner une identité réseau fixe, et l'administrer à distance.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ TOC ============ -->
+  <nav class="toc">
+    <p class="toc-title">Sommaire</p>
+    <ol>
+      <li><a href="#s1">Le réseau des VM (NAT, Interne…)</a></li>
+      <li><a href="#s2">Installer Windows Server 2022</a></li>
+      <li><a href="#s3">IP statique — version GUI</a></li>
+      <li><a href="#s4">IP statique — version CLI</a></li>
+      <li><a href="#s5">Profil réseau & pare-feu</a></li>
+      <li><a href="#s6">Administration distante (RSAT)</a></li>
+      <li><a href="#s7">Vérifications finales</a></li>
+      <li><a href="#recap">Ce qu'il faut retenir</a></li>
+      <li><a href="#reflexes">Réflexes & contrôle</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+
+    <div class="programme">
+      <h2>Au programme aujourd'hui</h2>
+      <ol>
+        <li>Comprendre les modes réseau des machines virtuelles (NAT, Réseau interne, Bridge, Host-Only).</li>
+        <li>Installer un Windows Server 2022 Standard <strong>Desktop Experience</strong>.</li>
+        <li>Donner une <strong>IP statique</strong> au serveur — en interface graphique <em>et</em> en PowerShell.</li>
+        <li>Comprendre les profils réseau (Public / Privé / Domaine) et configurer le pare-feu.</li>
+        <li>Administrer le serveur <strong>à distance</strong> depuis un poste client (RSAT + WinRM), sans RDP.</li>
+      </ol>
+    </div>
+
+    <p class="prereq"><strong>Prérequis</strong> — Une VM Windows Server 2022 (4 Go RAM, 60 Go disque, 2 vCPU), une VM cliente Windows 10/11, l'ISO du serveur, et l'hyperviseur VirtualBox. C'est le premier jour : aucune notion antérieure n'est supposée.</p>
+
+    <!-- ================= SECTION 1 ================= -->
+    <h2 class="sec" id="s1">Le réseau des machines virtuelles</h2>
+    <p>Avant de poser une IP, il faut savoir <em>sur quel réseau</em> la carte de la VM est branchée. Ce choix se fait dans l'hyperviseur, <strong>avant</strong> de toucher à Windows. C'est l'étape que tout le monde rate.</p>
+
+    <div class="box meta">
+      <span class="lbl">La métaphore de l'immeuble de bureaux</span>
+      <p>Imaginez vos VM comme des bureaux dans un immeuble. La <strong>carte réseau</strong> est la porte du bureau. Le <strong>mode réseau</strong> décide sur quoi cette porte donne :</p>
+      <ul>
+        <li><strong>Réseau interne</strong> = un <em>couloir privé</em> qui ne relie que les bureaux du même étage. Invisible depuis la rue. Parfait pour que le serveur et le client se parlent entre eux.</li>
+        <li><strong>NAT</strong> = la <em>porte de service avec un standard</em> : vous pouvez appeler vers l'extérieur (Internet), mais personne de la rue ne peut entrer chez vous directement.</li>
+        <li><strong>Bridge (Accès par pont)</strong> = brancher le bureau <em>directement sur la prise murale</em> de l'immeuble : la VM devient une vraie machine du réseau physique de la salle.</li>
+        <li><strong>Host-Only</strong> = un <em>interphone privé</em> entre la VM et votre PC hôte uniquement.</li>
+      </ul>
+    </div>
+
+    <h3 class="sub" id="s1-2">Le piège : une seule carte ne suffit pas</h3>
+    <p>Le cahier des charges demande deux choses contradictoires pour une seule carte :</p>
+    <ul>
+      <li>une <strong>IP fixe</strong> <code class="inline">192.168.10.10</code> pour que le client retrouve toujours le serveur au même endroit ;</li>
+      <li>un <strong>accès Internet</strong> (tester <code class="inline">8.8.8.8</code>, installer RSAT, <code class="inline">telnet google.com</code>).</li>
+    </ul>
+
+    <div class="box warn">
+      <span class="lbl">Piège classique — la passerelle fantôme</span>
+      <p>En <strong>Réseau interne seul</strong>, l'adresse <code class="inline">192.168.10.1</code> indiquée comme passerelle <strong>n'existe pas</strong> : aucun équipement ne route vers Internet sur ce couloir privé. Résultat : <code class="inline">Test-NetConnection 8.8.8.8</code> échoue et <code class="inline">Resolve-DnsName google.com</code> reste muet. Cette <code class="inline">.1</code> ne deviendra réelle que <strong>plus tard</strong>, quand ce serveur jouera lui-même le rôle de passerelle / DNS. Sur le J1, elle est inactive.</p>
+    </div>
+
+    <h3 class="sub" id="s1-3">La solution : deux cartes — NAT + Réseau interne</h3>
+    <p>On donne <strong>deux portes</strong> à chaque VM. Chacune fait un seul métier :</p>
+    <table>
+      <thead><tr><th>Carte</th><th>Mode</th><th>Rôle</th><th>Adressage</th></tr></thead>
+      <tbody>
+        <tr><td>Carte 1</td><td><strong>NAT</strong></td><td>Accès Internet (sortant)</td><td>Automatique (DHCP) — on n'y touche pas</td></tr>
+        <tr><td>Carte 2</td><td><strong>Réseau interne</strong></td><td>Dialogue serveur ↔ client</td><td><strong>IP statique</strong> <code>192.168.10.x</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="diagram"><code>        Internet
+           ▲
+           │ (sortant uniquement)
+   ┌───────┴────────┐                           ┌────────────────┐
+   │   SERVEUR      │   <span class="nat">Carte 1 : NAT  ──► DHCP auto (Internet)</span>   │    CLIENT      │
+   │ Windows Server │                           │  Windows 10/11 │
+   │                │   <span class="lab">═══════ Réseau interne « lab » ═══════</span>   │                │
+   │ <span class="int">Carte 2 : 192.168.10.10/24</span> ◄──────────────► <span class="int">192.168.10.50/24 : Carte 2</span> │
+   └────────────────┘        (WinRM 5985, ping, RDP)       └────────────────┘</code></div>
+
+    <div class="box key">
+      <span class="lbl">À retenir</span>
+      <p>La <strong>carte NAT</strong> porte la route par défaut et le DNS Internet (fournis automatiquement). La <strong>carte interne</strong> ne porte <em>que</em> l'IP statique du lab — <strong>sans passerelle</strong>. Deux métiers, deux cartes, zéro conflit.</p>
+    </div>
+
+    <h3 class="sub" id="s1-4">Configurer les deux cartes dans l'hyperviseur (GUI)</h3>
+    <p><strong>VirtualBox</strong> — VM éteinte : <em>Configuration → Réseau</em>.</p>
+    <ul>
+      <li><strong>Onglet « Carte 1 »</strong> : cocher <em>Activer la carte réseau</em> → <em>Mode d'accès réseau</em> = <strong>NAT</strong>.</li>
+      <li><strong>Onglet « Carte 2 »</strong> : cocher <em>Activer la carte réseau</em> → <em>Mode</em> = <strong>Réseau interne</strong> → <em>Nom</em> = <code class="inline">lab</code> (le même nom sur le serveur et sur le client, sinon ils ne se voient pas).</li>
+    </ul>
+
+    <div class="box tip">
+      <span class="lbl">Bonne pratique</span>
+      <p>Faites le même montage <strong>à deux cartes</strong> sur la VM cliente. Elle aura ainsi Internet (NAT) pour installer RSAT, <em>et</em> l'IP <code class="inline">192.168.10.50</code> sur le réseau interne pour atteindre le serveur.</p>
+    </div>
+
+    <!-- ================= SECTION 2 ================= -->
+    <h2 class="sec" id="s2">Installer Windows Server 2022</h2>
+    <p>Vous êtes prestataire IT. Le client veut une machine <em>clean</em>, en réseau, documentée. On installe l'édition avec interface graphique, on partitionne, on définit le mot de passe.</p>
+
+    <h3 class="sub" id="s2-1">Édition : Desktop Experience, pas Core</h3>
+    <p>Au choix de l'édition, sélectionnez exactement <strong>Windows Server 2022 Standard (Desktop Experience)</strong>.</p>
+    <div class="box warn">
+      <span class="lbl">Piège classique</span>
+      <p>La ligne <em>« Windows Server 2022 Standard »</em> tout court, c'est <strong>Server Core</strong> : aucune interface graphique, que de la ligne de commande. Pour ce premier jour, ce n'est <strong>pas</strong> ce qu'on veut. Vérifiez bien la mention <code class="inline">(Desktop Experience)</code>.</p>
+    </div>
+
+    <h3 class="sub" id="s2-2">Partitionnement & premier démarrage</h3>
+    <ol>
+      <li>Langue / format / clavier : <strong>Français</strong>.</li>
+      <li>Type d'installation : <strong>Personnalisée</strong> (pas « Mise à niveau »).</li>
+      <li>Sélectionner le disque → <strong>Nouveau</strong> → taille proposée → <strong>Appliquer</strong>. Windows crée 3 partitions (système, MSR, Windows) : c'est normal. Sélectionner la grande partition → <strong>Suivant</strong>.</li>
+      <li>Au premier démarrage, mot de passe Administrator : <code class="inline">P@ssw0rd123!</code></li>
+    </ol>
+    <p>Renommage, fuseau horaire et RDP se font ensuite via <strong>Gestionnaire de serveur → Serveur local</strong> (voir §3.3).</p>
+    <p><em>Capture 1</em> : le bureau Windows Server avec le Gestionnaire de serveur ouvert.</p>
+
+    <!-- ================= SECTION 3 ================= -->
+    <h2 class="sec" id="s3">IP statique — version GUI</h2>
+
+    <div class="box meta">
+      <span class="lbl">La métaphore de la boîte aux lettres</span>
+      <p>Une <strong>IP dynamique (DHCP)</strong>, c'est une chambre d'hôtel : on vous en réattribue une au hasard à chaque séjour. Pratique pour un client de passage. Mais un <strong>serveur</strong>, c'est une <em>maison</em> : il lui faut une <strong>boîte aux lettres fixe</strong>, gravée sur la porte, pour que le facteur (le client) sache toujours où déposer le courrier. C'est tout le sens de l'IP statique.</p>
+    </div>
+
+    <p>On configure <strong>uniquement la carte interne</strong> en statique. La carte NAT, elle, reste en automatique (DHCP) : c'est elle qui fournit Internet, on n'y touche pas.</p>
+
+    <h3 class="sub" id="s3-1">Poser l'IP statique sur la carte interne</h3>
+    <ol>
+      <li>Gestionnaire de serveur → <strong>Serveur local</strong> → cliquer sur le nom de la connexion <strong>Ethernet</strong> qui correspond au réseau interne.</li>
+      <li>Clic droit sur la carte → <strong>Propriétés</strong>.</li>
+      <li>Double-cliquer sur <strong>Protocole Internet version 4 (TCP/IPv4)</strong>.</li>
+      <li>Cocher <strong>Utiliser l'adresse IP suivante</strong> :
+        <ul>
+          <li>Adresse IP : <code class="inline">192.168.10.10</code></li>
+          <li>Masque de sous-réseau : <code class="inline">255.255.255.0</code></li>
+          <li>Passerelle par défaut : <strong>laisser vide</strong> sur le J1 (voir l'encadré).</li>
+        </ul>
+      </li>
+      <li>Serveur DNS : <strong>laisser vide</strong> aussi (la résolution Internet passe par la carte NAT).</li>
+      <li><strong>OK</strong> → <strong>OK</strong>.</li>
+    </ol>
+
+    <div class="box warn">
+      <span class="lbl">Pourquoi passerelle &amp; DNS vides sur la carte interne ?</span>
+      <p>Si vous mettez <code class="inline">192.168.10.1</code> en passerelle sur la carte interne, Windows crée une <strong>seconde route par défaut</strong> vers une adresse qui ne répond pas. Au mieux elle est inactive, au pire elle perturbe l'accès Internet fourni par la NAT. Une seule carte porte la route par défaut : la <strong>NAT</strong>. Le cahier des charges (passerelle/DNS en <code class="inline">.1</code>) ne prendra son sens qu'à partir du J2, quand ce serveur deviendra lui-même passerelle/DNS.</p>
+    </div>
+
+    <h3 class="sub" id="s3-2">Renommer, fuseau horaire, Bureau à distance</h3>
+    <p>Toujours depuis Gestionnaire de serveur → <strong>Serveur local</strong> :</p>
+    <ul>
+      <li><strong>Nom de l'ordinateur</strong> : cliquer sur le nom actuel (<code class="inline">WIN-XXXXXX</code>) → <em>Modifier…</em> → saisir <code class="inline">SRV-FORM-XX</code> (XX = vos initiales). Redémarrage requis.</li>
+      <li><strong>Fuseau horaire</strong> : cliquer dessus → <code class="inline">(UTC+01:00) Bruxelles, Copenhague, Madrid, Paris</code>.</li>
+      <li><strong>Bureau à distance</strong> : cliquer sur « Désactivé » → cocher <em>Autoriser les connexions distantes</em> → accepter le message du pare-feu.</li>
+    </ul>
+    <p>Puis <em>Menu Démarrer → Power → Redémarrer</em> pour valider le renommage.</p>
+
+    <table>
+      <thead><tr><th>Réglage</th><th>Carte NAT (Internet)</th><th>Carte interne (lab)</th></tr></thead>
+      <tbody>
+        <tr><td>Adressage</td><td>Automatique (DHCP)</td><td>Statique <code>192.168.10.10/24</code></td></tr>
+        <tr><td>Passerelle</td><td>Auto (≈ <code>10.0.2.2</code>)</td><td><strong>Aucune</strong></td></tr>
+        <tr><td>DNS</td><td>Auto</td><td><strong>Aucun</strong> (J1)</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ================= SECTION 4 ================= -->
+    <h2 class="sec" id="s4">IP statique — version CLI (PowerShell)</h2>
+    <p>En entreprise, on ne configure pas 50 serveurs à la souris. On écrit un script. Refaisons toute la configuration réseau en PowerShell, <strong>sans jamais toucher à l'interface</strong>. Ouvrez <strong>PowerShell en administrateur</strong>.</p>
+
+    <div class="box meta">
+      <span class="lbl">La métaphore poursuivie</span>
+      <p>La GUI, c'est aller graver la boîte aux lettres à la main, bureau par bureau. PowerShell, c'est <strong>dicter les instructions au serrurier</strong> : une fois écrites, il les applique partout, à l'identique, sans se tromper.</p>
+    </div>
+
+    <h3 class="sub" id="s4-1">Les 6 commandes de diagnostic</h3>
+    <p>Tapez chacune, observez la sortie, notez en une phrase ce qu'elle fait :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Get-NetAdapter</span>              <span class="c"># liste les cartes physiques et leur état</span>
+<span class="k">Get-NetIPAddress</span>            <span class="c"># les adresses IP posées sur chaque carte</span>
+<span class="k">Get-NetIPConfiguration</span>      <span class="c"># vue d'ensemble : IP + passerelle + DNS par carte</span>
+<span class="k">Get-DnsClientServerAddress</span>  <span class="c"># les serveurs DNS configurés</span>
+<span class="k">Get-NetRoute</span>                <span class="c"># la table de routage (qui mène où)</span>
+<span class="k">Get-NetFirewallProfile</span>      <span class="c"># l'état des 3 profils de pare-feu</span></code></pre></div>
+    <div class="box tip"><span class="lbl">Astuce</span><p>Si vous comprenez ces 6 commandes, vous tenez 80 % du diagnostic réseau Windows.</p></div>
+
+    <h3 class="sub" id="s4-2">Repérer la bonne carte</h3>
+    <p>Vous avez <strong>deux cartes</strong>. Il faut configurer <strong>la carte interne</strong>, pas la NAT. Pour les distinguer :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Get-NetIPConfiguration</span>
+<span class="c"># La carte NAT a déjà une IP automatique en 10.0.2.x (fournie par DHCP).</span>
+<span class="c"># La carte interne, elle, n'a pas d'IP utile (169.254.x.x) tant qu'on n'a rien posé.</span>
+<span class="c"># => c'est CELLE-LÀ qu'on va configurer.</span></code></pre></div>
+
+    <p>On renomme les cartes pour ne plus se tromper (adaptez <code class="inline">"Ethernet 2"</code> au nom réel vu plus haut) :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Carte interne -> "LAN" (celle qui portera l'IP statique)</span>
+<span class="k">Rename-NetAdapter</span> <span class="p">-Name</span> <span class="s">"Ethernet 2"</span> <span class="p">-NewName</span> <span class="s">"LAN"</span>
+
+<span class="c"># Carte NAT -> "NAT-Internet" (reste en DHCP, on n'y touche pas)</span>
+<span class="k">Rename-NetAdapter</span> <span class="p">-Name</span> <span class="s">"Ethernet"</span> <span class="p">-NewName</span> <span class="s">"NAT-Internet"</span></code></pre></div>
+
+    <div class="box warn">
+      <span class="lbl">Le nom exact compte</span>
+      <p>Si votre carte ne s'appelle pas exactement <code class="inline">Ethernet 2</code>, la commande échoue avec « <em>No matching … was found</em> ». Recopiez le champ <strong>Name</strong> rendu par <code class="inline">Get-NetAdapter</code>, espaces compris.</p>
+    </div>
+
+    <h3 class="sub" id="s4-3">Poser l'IP statique</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># 1. Nettoyer une éventuelle ancienne config (évite "L'adresse existe déjà")</span>
+<span class="k">Remove-NetIPAddress</span> <span class="p">-InterfaceAlias</span> <span class="s">"LAN"</span> <span class="p">-Confirm</span>:<span class="num">$false</span> <span class="p">-ErrorAction</span> SilentlyContinue
+<span class="k">Remove-NetRoute</span>     <span class="p">-InterfaceAlias</span> <span class="s">"LAN"</span> <span class="p">-Confirm</span>:<span class="num">$false</span> <span class="p">-ErrorAction</span> SilentlyContinue
+
+<span class="c"># 2. Poser l'IP statique SUR LA CARTE INTERNE — sans passerelle (J1)</span>
+<span class="k">New-NetIPAddress</span> <span class="p">-InterfaceAlias</span> <span class="s">"LAN"</span> `
+                 <span class="p">-IPAddress</span> <span class="num">192.168.10.10</span> `
+                 <span class="p">-PrefixLength</span> <span class="num">24</span></code></pre></div>
+
+    <div class="box note">
+      <span class="lbl">Le backtick ` en fin de ligne</span>
+      <p>L'accent grave <code class="inline">`</code> dit à PowerShell « la commande continue à la ligne suivante ». Il sert seulement à aérer un appel long. Vous pouvez tout écrire sur une seule ligne sans backtick.</p>
+    </div>
+
+    <div class="box warn">
+      <span class="lbl">On a retiré <code>-DefaultGateway</code> volontairement</span>
+      <p>La carte NAT fournit déjà la route par défaut. Ajouter <code class="inline">-DefaultGateway 192.168.10.1</code> sur la carte interne créerait une route vers une passerelle inexistante. On l'omet sur le J1.</p>
+    </div>
+
+    <h3 class="sub" id="s4-4">DNS (optionnel sur le J1)</h3>
+    <p>La résolution Internet passe par la carte NAT, donc <strong>rien à configurer</strong> sur la carte interne aujourd'hui. Pour mémoire, la commande qui le ferait :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Inutile sur le J1 — la carte NAT fournit déjà un DNS Internet.</span>
+<span class="c"># À partir du J2, le serveur pointera vers lui-même :</span>
+<span class="k">Set-DnsClientServerAddress</span> <span class="p">-InterfaceAlias</span> <span class="s">"LAN"</span> `
+                           <span class="p">-ServerAddresses</span> <span class="num">192.168.10.10</span></code></pre></div>
+    <p>Vérification finale :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Get-NetIPConfiguration</span></code></pre></div>
+    <p><em>Capture</em> : la sortie de <code class="inline">Get-NetIPConfiguration</code> après modification.</p>
+
+    <table>
+      <thead><tr><th>Action</th><th>Pseudocode</th><th>PowerShell</th></tr></thead>
+      <tbody>
+        <tr><td>Renommer une carte</td><td>RENOMMER carte « X » EN « Y »</td><td><code>Rename-NetAdapter -Name X -NewName Y</code></td></tr>
+        <tr><td>Poser une IP fixe</td><td>AFFECTER ip À carte</td><td><code>New-NetIPAddress -InterfaceAlias … -IPAddress … -PrefixLength 24</code></td></tr>
+        <tr><td>Définir le DNS</td><td>AFFECTER dns À carte</td><td><code>Set-DnsClientServerAddress -InterfaceAlias … -ServerAddresses …</code></td></tr>
+        <tr><td>Vérifier</td><td>AFFICHER config</td><td><code>Get-NetIPConfiguration</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- ================= SECTION 5 ================= -->
+    <h2 class="sec" id="s5">Profil réseau & pare-feu</h2>
+
+    <div class="box meta">
+      <span class="lbl">La métaphore des trois tenues</span>
+      <p>Windows adapte sa sécurité selon « l'endroit » où il se croit, comme on s'habille selon le lieu :</p>
+      <ul>
+        <li><strong>Public</strong> = dans la rue, méfiant : portes verrouillées, on n'ouvre à personne (admin distante bloquée).</li>
+        <li><strong>Privé</strong> = à la maison, en confiance : on accepte les voisins connus (le client peut administrer).</li>
+        <li><strong>Domaine</strong> = au bureau, sous l'autorité du domaine Active Directory (pour plus tard).</li>
+      </ul>
+    </div>
+
+    <h3 class="sub" id="s5-1">Forcer le profil en Privé</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Get-NetConnectionProfile</span>     <span class="c"># quel profil est actif sur chaque carte ?</span>
+
+<span class="c"># Forcer la carte interne en Private (sinon l'admin distante échouera)</span>
+<span class="k">Set-NetConnectionProfile</span> <span class="p">-InterfaceAlias</span> <span class="s">"LAN"</span> <span class="p">-NetworkCategory</span> Private</code></pre></div>
+    <div class="box warn">
+      <span class="lbl">Le piège n°1 du TP suivant</span>
+      <p>Si la carte interne reste en <strong>Public</strong>, le WinRM (admin distante) sera bloqué et <em>rien</em> ne fonctionnera à la §6. C'est l'erreur la plus fréquente de la journée. Vérifiez-le maintenant.</p>
+    </div>
+
+    <h3 class="sub" id="s5-2">Activer quelques règles de pare-feu</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Vérifier que les 3 profils sont actifs (Enabled = True)</span>
+<span class="k">Get-NetFirewallProfile</span> | <span class="k">Select-Object</span> Name, Enabled
+
+<span class="c"># Autoriser le ping entrant (ICMPv4)</span>
+<span class="k">Enable-NetFirewallRule</span> <span class="p">-DisplayName</span> <span class="s">"File and Printer Sharing (Echo Request - ICMPv4-In)"</span>
+
+<span class="c"># Autoriser le groupe WinRM (admin distante, §6)</span>
+<span class="k">Enable-NetFirewallRule</span> <span class="p">-DisplayGroup</span> <span class="s">"Windows Remote Management"</span>
+
+<span class="c"># Créer une règle perso : HTTPS (443) en entrée</span>
+<span class="k">New-NetFirewallRule</span> <span class="p">-DisplayName</span> <span class="s">"Allow HTTPS"</span> `
+                    <span class="p">-Direction</span> Inbound `
+                    <span class="p">-Protocol</span> TCP `
+                    <span class="p">-LocalPort</span> <span class="num">443</span> `
+                    <span class="p">-Action</span> Allow</code></pre></div>
+    <div class="box tip"><span class="lbl">Bonne pratique</span><p>Écrivez toute cette séquence dans un fichier <code class="inline">config_reseau.ps1</code> commenté. Demain, vous apprendrez à exécuter un script <code class="inline">.ps1</code> d'un coup.</p></div>
+
+    <!-- ================= SECTION 6 ================= -->
+    <h2 class="sec" id="s6">Administration distante (RSAT + WinRM)</h2>
+    <p>En entreprise, on n'ouvre <strong>jamais</strong> de session RDP directe sur un serveur de prod : question de sécurité, de traçabilité, de productivité. On administre depuis son poste, via RSAT et WinRM. (Dans ce TP, le serveur passe à <code class="inline">192.168.10.20</code> et le client à <code class="inline">192.168.10.50</code> — toujours sur le réseau interne.)</p>
+
+    <h3 class="sub" id="s6-1">Côté serveur : activer l'écoute distante</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Enable-PSRemoting</span> <span class="p">-Force</span>      <span class="c"># active WinRM, ouvre le port 5985, configure les services</span>
+<span class="k">Get-NetTCPConnection</span> <span class="p">-LocalPort</span> <span class="num">5985</span>   <span class="c"># doit afficher une ligne en "Listen"</span></code></pre></div>
+
+    <h3 class="sub" id="s6-2">Côté client : RSAT + liste de confiance</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Installer les outils d'administration distante (10-15 min)</span>
+<span class="k">Get-WindowsCapability</span> <span class="p">-Online</span> <span class="p">-Name</span> <span class="s">"RSAT*"</span> | <span class="k">Add-WindowsCapability</span> <span class="p">-Online</span>
+
+<span class="c"># Hors domaine, déclarer le serveur comme "de confiance"</span>
+<span class="k">Set-Item</span> WSMan:\localhost\Client\TrustedHosts <span class="p">-Value</span> <span class="s">"192.168.10.20"</span> <span class="p">-Force</span></code></pre></div>
+
+    <h3 class="sub" id="s6-3">Enter-PSSession vs Invoke-Command</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Tester le canal WinRM (doit répondre du XML "Microsoft Corporation")</span>
+<span class="k">Test-WSMan</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.20</span>
+
+<span class="c"># SESSION INTERACTIVE : on "entre" sur le serveur, on tape plusieurs commandes</span>
+<span class="k">Enter-PSSession</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.20</span> <span class="p">-Credential</span> (<span class="k">Get-Credential</span>)
+
+<span class="c"># EXÉCUTION "ONE-SHOT" : une seule commande à distance, sans ouvrir de session</span>
+<span class="k">Invoke-Command</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.20</span> `
+               <span class="p">-Credential</span> (<span class="k">Get-Credential</span>) `
+               <span class="p">-ScriptBlock</span> { <span class="k">Get-Service</span> | <span class="k">Where-Object</span> Status -eq <span class="s">"Running"</span> }</code></pre></div>
+    <div class="box key">
+      <span class="lbl">La différence à retenir</span>
+      <p><strong>Enter-PSSession</strong> = vous <em>entrez</em> dans le serveur pour une session interactive (plusieurs commandes d'affilée). <strong>Invoke-Command</strong> = vous <em>envoyez</em> une commande, elle s'exécute, vous récupérez le résultat — idéal pour une action unique, ou sur <em>plusieurs</em> serveurs en parallèle.</p>
+    </div>
+    <p><em>Captures</em> : sortie réussie de <code class="inline">Test-WSMan</code>, prompt <code class="inline">[192.168.10.20]:</code>, et le serveur en vert dans le Gestionnaire de serveur.</p>
+
+    <!-- ================= SECTION 7 ================= -->
+    <h2 class="sec" id="s7">Vérifications finales</h2>
+    <p>Sur le serveur, après config :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">hostname</span>                          <span class="c"># doit afficher SRV-FORM-XX</span>
+<span class="k">Get-NetIPConfiguration</span>            <span class="c"># IP statique présente sur la carte interne</span>
+<span class="k">Test-NetConnection</span> <span class="num">8.8.8.8</span>         <span class="c"># Internet via la NAT -> PingSucceeded : True</span>
+<span class="k">Resolve-DnsName</span> google.com         <span class="c"># résolution DNS -> retourne une IP</span></code></pre></div>
+    <div class="box key">
+      <span class="lbl">Le test qui prouve que le montage est bon</span>
+      <p><code class="inline">Test-NetConnection 8.8.8.8</code> réussit <strong>grâce à la carte NAT</strong>, pas grâce à la passerelle <code class="inline">.1</code>. Si ce test échoue alors que l'IP statique est bien posée, c'est presque toujours que la carte NAT manque ou est mal configurée — pas l'IP statique.</p>
+    </div>
+
+    <!-- ================= RECAP ================= -->
+    <h2 class="sec" id="recap">Ce qu'il faut retenir</h2>
+    <table class="recap">
+      <thead><tr><th>Notion</th><th>L'essentiel</th></tr></thead>
+      <tbody>
+        <tr><td>Modes réseau VM</td><td>Réseau interne = couloir privé entre VM ; NAT = Internet sortant ; Bridge = prise murale physique ; Host-Only = interphone VM↔hôte.</td></tr>
+        <tr><td>Montage du lab</td><td><strong>Deux cartes</strong> : NAT (Internet, DHCP) + Réseau interne (IP statique). Même nom de réseau interne sur serveur et client.</td></tr>
+        <tr><td>IP statique</td><td>Sur la carte <strong>interne</strong> uniquement. Passerelle &amp; DNS <strong>vides</strong> sur le J1 — l'Internet vient de la NAT.</td></tr>
+        <tr><td>GUI</td><td>Serveur local → Ethernet → Propriétés → IPv4 → « Utiliser l'adresse IP suivante ».</td></tr>
+        <tr><td>CLI</td><td><code>Rename-NetAdapter</code> → <code>New-NetIPAddress -PrefixLength 24</code> (sans <code>-DefaultGateway</code> au J1).</td></tr>
+        <tr><td>Profil réseau</td><td>Forcer la carte interne en <strong>Private</strong>, sinon l'admin distante est bloquée.</td></tr>
+        <tr><td>Pare-feu</td><td><code>Enable-NetFirewallRule</code> (ICMP, WinRM) + <code>New-NetFirewallRule</code> pour une règle perso.</td></tr>
+        <tr><td>Admin distante</td><td><code>Enable-PSRemoting</code> côté serveur, RSAT + TrustedHosts côté client. <code>Enter-PSSession</code> (interactif) vs <code>Invoke-Command</code> (one-shot).</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ================= REFLEXES ================= -->
+    <h2 class="sec" id="reflexes">Réflexes & questions de contrôle</h2>
+    <div class="box key">
+      <span class="lbl">Les réflexes anti-erreur de la journée</span>
+      <ul>
+        <li>Internet qui ne marche pas → vérifier la <strong>carte NAT</strong>, pas l'IP statique.</li>
+        <li>Admin distante qui échoue → la carte interne est-elle en <strong>Private</strong> ?</li>
+        <li>« L'adresse existe déjà » → <code class="inline">Remove-NetIPAddress</code> avant <code class="inline">New-NetIPAddress</code>.</li>
+        <li>Commande qui ne trouve pas la carte → recopier le <strong>Name</strong> exact de <code class="inline">Get-NetAdapter</code>.</li>
+        <li>Masque <code class="inline">/24</code> ⇔ <code class="inline">255.255.255.0</code> ⇔ <code class="inline">-PrefixLength 24</code> : trois écritures, une seule réalité.</li>
+      </ul>
+    </div>
+    <p>À préparer pour le J2 :</p>
+    <ol>
+      <li>Pourquoi un serveur a-t-il <strong>toujours</strong> une IP statique ?</li>
+      <li>Pourquoi le profil <strong>Public</strong> bloque-t-il l'admin distante ?</li>
+      <li>Que fait <code class="inline">Enable-PSRemoting -Force</code> exactement (4-5 actions) ?</li>
+      <li>Pourquoi RSAT plutôt que RDP en entreprise (3 raisons) ?</li>
+      <li>Différence entre <code class="inline">Enter-PSSession</code> et <code class="inline">Invoke-Command</code> ?</li>
+    </ol>
+
+  </main>
+</div>
+
+<footer>
+  Formation Windows Server 2022 · Module 1WIN2 · Jour 1 — Réseau & IP statique · Support de cours
+</footer>
+
+</body>
+</html>

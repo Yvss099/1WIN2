@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Introduction à Active Directory (AD DS)</title>
+<style>
+  :root{
+    --accent:#0078d4; --accent-d:#005fb8;
+    --desktop:#eaeef4; --surface:#ffffff; --mica:#f7f9fc;
+    --ink:#1b1b1b; --ink-soft:#383838; --muted:#5d5d5d;
+    --line:#e2e6ec; --line-soft:#edf0f4;
+    --hero:#0a59b0; --hero2:#0c4f9c;
+    /* PowerShell console */
+    --ps-bg:#012456; --ps-bar:#0a1f47; --ps-text:#e8e8e8;
+    --c-com:#57a64a; --c-kw:#dcdcaa; --c-str:#ce9178; --c-par:#9cdcfe; --c-num:#b5cea8;
+    /* Fluent InfoBars */
+    --warn-bg:#fff4ce; --warn-bd:#9d5d00;
+    --tip-bg:#f0f6ff;  --tip-bd:#0078d4;
+    --note-bg:#f4f1fb; --note-bd:#6b4fbb;
+    --key-bg:#dff6dd;  --key-bd:#0f7b0f;
+    --meta-bg:#eef3fb; --meta-bd:#5b5fc7;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--desktop); color:var(--ink);
+    font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  code,kbd,pre{font-family:"Cascadia Code","Cascadia Mono",Consolas,"SFMono-Regular",ui-monospace,monospace}
+
+  /* ---------- Window title bar ---------- */
+  .winbar{
+    position:sticky; top:0; z-index:30; height:36px; display:flex; align-items:center;
+    background:var(--mica); border-bottom:1px solid var(--line);
+    padding-left:12px; font-size:.8rem; color:var(--ink-soft);
+  }
+  .winbar .wlogo{display:flex; gap:1.5px; margin-right:9px}
+  .winbar .wlogo i{width:7px; height:7px; background:var(--accent); display:block}
+  .winbar .wtitle{flex:1 1 auto; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted)}
+  .winbar .caps{display:flex; height:36px}
+  .winbar .cap{width:46px; height:36px; display:flex; align-items:center; justify-content:center; cursor:default}
+  .winbar .cap:hover{background:#e3e7ee}
+  .winbar .cap.close:hover{background:#c42b1c; color:#fff}
+  .cap.min i{width:10px; height:1px; background:currentColor; display:block}
+  .cap.max i{width:9px; height:9px; border:1px solid currentColor; display:block; border-radius:1px}
+  .cap.close i{font-style:normal; font-size:.82rem; line-height:1}
+
+  /* ---------- Hero ---------- */
+  header.hero{
+    background:var(--hero); color:#fff; padding:30px 20px 28px; border-bottom:1px solid var(--hero2);
+  }
+  .hero-inner{max-width:1180px; margin:0 auto}
+  .brand{display:flex; align-items:center; gap:9px; margin:0 0 14px; font-weight:600; font-size:.92rem; color:#dbe9fb}
+  .brand .blogo{display:flex; gap:2px}
+  .brand .blogo i{width:9px; height:9px; background:#fff; display:block}
+  .eyebrow{font-size:.76rem; letter-spacing:.12em; text-transform:uppercase; color:#a9c8ee; margin:0 0 8px}
+  .hero h1{margin:0 0 6px; font-size:1.8rem; line-height:1.18; font-weight:650}
+  .hero p.sub{margin:0; color:#cfe0f6; font-size:1rem}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1180px; margin:0 auto; display:flex; gap:30px; padding:0 20px; background:var(--surface)}
+  nav.toc{
+    flex:0 0 252px; position:sticky; top:36px; align-self:flex-start;
+    max-height:calc(100vh - 36px); overflow-y:auto; padding:22px 8px 40px;
+  }
+  nav.toc .toc-title{font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:0 0 8px; padding-left:12px; font-weight:600}
+  nav.toc ol{list-style:none; margin:0; padding:0; counter-reset:toc}
+  nav.toc a{
+    counter-increment:toc; display:block; text-decoration:none; color:var(--ink-soft);
+    font-size:.88rem; padding:7px 10px 7px 34px; border-radius:6px; position:relative; margin:1px 0;
+  }
+  nav.toc a::before{content:counter(toc); position:absolute; left:12px; color:var(--muted); font-variant-numeric:tabular-nums; font-size:.78rem; top:7px}
+  nav.toc a::after{content:""; position:absolute; left:3px; top:50%; transform:translateY(-50%); width:3px; height:0; background:var(--accent); border-radius:3px; transition:height .12s ease}
+  nav.toc a:hover{background:#eef3fb; color:var(--accent-d)}
+  nav.toc a:hover::after{height:16px}
+
+  main{flex:1 1 auto; max-width:800px; padding:28px 0 80px; min-width:0; border-left:1px solid var(--line-soft); padding-left:30px}
+
+  .programme{background:var(--mica); border:1px solid var(--line); border-radius:8px; padding:16px 20px; margin:0 0 14px}
+  .programme h2{margin:0 0 8px; font-size:1rem}
+  .programme h2::before{content:none !important}
+  .programme ol{margin:0; padding-left:22px}
+  .prereq{font-size:.93rem; color:var(--ink-soft)}
+
+  /* ---------- Section numbering ---------- */
+  main{counter-reset:h2}
+  h2.sec{
+    counter-reset:h3; counter-increment:h2; font-size:1.36rem; font-weight:650; margin:40px 0 6px;
+    padding-bottom:8px; border-bottom:2px solid var(--line); scroll-margin-top:48px;
+  }
+  h2.sec::before{content:counter(h2) ". "; color:var(--accent); font-weight:700}
+  h3.sub{counter-increment:h3; font-size:1.06rem; font-weight:650; margin:24px 0 6px; scroll-margin-top:48px}
+  h3.sub::before{content:counter(h2) "." counter(h3) "  "; color:var(--accent); font-weight:600}
+  p{margin:10px 0} ul,ol{padding-left:24px} li{margin:4px 0}
+  strong{font-weight:650}
+  code.inline{background:#f1f3f7; border:1px solid #e1e5ec; border-radius:4px; padding:1px 5px; font-size:.85em; color:#0b3b73}
+
+  /* ---------- PowerShell console ---------- */
+  .ps{margin:14px 0; border-radius:8px; overflow:hidden; border:1px solid #0a1f47; box-shadow:0 1px 2px rgba(0,0,0,.12)}
+  .ps-bar{
+    background:var(--ps-bar); color:#cfd8ea; font-size:.76rem; padding:6px 12px;
+    display:flex; align-items:center; gap:8px; font-family:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  }
+  .ps-ico{width:10px; height:10px; border-radius:2px; background:linear-gradient(135deg,#3a7bd5,#0a59b0); flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+  .ps pre{margin:0; background:var(--ps-bg); color:var(--ps-text); border:none; border-radius:0; padding:13px 16px; overflow-x:auto; font-size:.84rem; line-height:1.55}
+  pre code{white-space:pre}
+  .c{color:var(--c-com); font-style:italic}
+  .k{color:var(--c-kw)} .s{color:var(--c-str)} .p{color:var(--c-par)} .num{color:var(--c-num)} .v{color:#9cdcfe}
+
+  /* ---------- Callouts (Fluent InfoBar) ---------- */
+  .box{border:1px solid var(--line); border-left-width:4px; border-radius:6px; padding:12px 16px; margin:14px 0; font-size:.94rem}
+  .box p{margin:6px 0} .box p:first-child{margin-top:0} .box p:last-child{margin-bottom:0}
+  .box .lbl{font-weight:700; display:block; margin-bottom:3px}
+  .warn{background:var(--warn-bg); border-color:#f2e6b0; border-left-color:var(--warn-bd)}
+  .warn .lbl{color:#7a4a00}
+  .tip {background:var(--tip-bg);  border-color:#d4e4fb; border-left-color:var(--tip-bd)} .tip .lbl{color:#005fb8}
+  .note{background:var(--note-bg); border-color:#e2daf4; border-left-color:var(--note-bd)} .note .lbl{color:#523a99}
+  .key {background:var(--key-bg);  border-color:#c4ecc0; border-left-color:var(--key-bd)} .key .lbl{color:#0c5e0c}
+  .meta{background:var(--meta-bg); border-color:#d7def0; border-left-color:var(--meta-bd)} .meta .lbl{color:#3f43a8}
+
+  /* ---------- Diagram (console-styled) ---------- */
+  .diagram{
+    background:var(--ps-bg); color:#cdd6e6; border:1px solid #0a1f47; border-radius:8px;
+    padding:18px 16px; margin:16px 0; font-size:.8rem; line-height:1.45; overflow-x:auto;
+    box-shadow:0 1px 2px rgba(0,0,0,.12);
+  }
+  .diagram .nat{color:#6ee7b7} .diagram .int{color:#9cdcfe} .diagram .lab{color:#dcdcaa}
+
+  /* ---------- Tables ---------- */
+  table{border-collapse:collapse; width:100%; margin:14px 0; font-size:.91rem}
+  th,td{border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top}
+  th{background:var(--mica); font-weight:650}
+  tbody tr:nth-child(even){background:#fafcfe}
+  td code{font-size:.85em}
+  .recap th{background:var(--accent); color:#fff; border-color:var(--accent-d)}
+
+  hr{border:none; border-top:1px solid var(--line); margin:34px 0}
+  footer{background:var(--mica); border-top:1px solid var(--line); padding:16px 20px; color:var(--muted); font-size:.84rem; text-align:center}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:880px){
+    .wrap{flex-direction:column; gap:0}
+    nav.toc{position:static; max-height:none; flex-basis:auto; padding:16px 8px 4px; border-bottom:1px solid var(--line); margin-bottom:6px}
+    nav.toc ol{display:flex; flex-wrap:wrap; gap:4px; counter-reset:toc}
+    nav.toc a{padding:6px 12px 6px 28px; border:1px solid var(--line); border-radius:999px; font-size:.8rem; margin:0}
+    nav.toc a::before{top:6px}
+    nav.toc a::after{display:none}
+    main{padding-left:0; border-left:none; padding-top:16px}
+    .hero h1{font-size:1.42rem}
+    .winbar .wtitle{font-size:.74rem}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<div class="winbar">
+  <span class="wlogo"><i></i><i></i><i></i><i></i></span>
+  <span class="wtitle">J3_Active_Directory — Support de cours</span>
+  <span class="caps">
+    <span class="cap min"><i></i></span>
+    <span class="cap max"><i></i></span>
+    <span class="cap close"><i>✕</i></span>
+  </span>
+</div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="brand"><span class="blogo"><i></i><i></i><i></i><i></i></span>Windows Server 2022</div>
+    <p class="eyebrow">Module 1WIN2 · Jour 3</p>
+    <h1>Introduction à Active Directory (AD DS)</h1>
+    <p class="sub">Bâtir l&#x27;annuaire central : forêt, domaine, contrôleur, unités d&#x27;organisation.</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc">
+    <p class="toc-title">Sommaire</p>
+    <ol>
+      <li><a href="#s1">AD DS, c'est quoi ?</a></li>
+      <li><a href="#s2">Forêt, domaine, OU, objet</a></li>
+      <li><a href="#s3">Contrôleurs & FSMO</a></li>
+      <li><a href="#s4">Exercice de conception</a></li>
+      <li><a href="#s5">Installer le rôle AD DS</a></li>
+      <li><a href="#s6">Promouvoir en contrôleur</a></li>
+      <li><a href="#s7">Réseau post-promotion</a></li>
+      <li><a href="#tp1">TP 1 — Premier contrôleur</a></li>
+      <li><a href="#s8">Structure d'OU</a></li>
+      <li><a href="#tp2">TP 2 — Structure École IT</a></li>
+      <li><a href="#s9">Outils d'administration</a></li>
+      <li><a href="#tp3">TP 3 — Maîtriser les outils</a></li>
+      <li><a href="#recap">Ce qu'il faut retenir</a></li>
+      <li><a href="#reflexes">Réflexes & contrôle</a></li>
+    </ol>
+  </nav>
+  <main>
+
+    <div class="programme">
+      <h2>Au programme aujourd'hui</h2>
+      <ol>
+        <li>Comprendre <strong>Active Directory</strong> : forêt, domaine, arbre, unité d'organisation, objet.</li>
+        <li>Connaître les <strong>contrôleurs de domaine</strong> et les rôles <strong>FSMO</strong>.</li>
+        <li>Installer le rôle AD DS et <strong>promouvoir</strong> le serveur en premier contrôleur de domaine.</li>
+        <li>Bâtir une <strong>structure d'unités d'organisation</strong> et la peupler.</li>
+        <li>Prendre en main les <strong>outils d'administration</strong> : ADUC, ADSI Edit, module PowerShell AD.</li>
+      </ol>
+    </div>
+
+    <p class="prereq"><strong>Prérequis</strong> &mdash; Le serveur des Jours 1 et 2 : nom <code class="inline">SRV-DC01</code>, IP statique <code class="inline">192.168.100.10/24</code>, rôle <strong>DNS</strong> fonctionnel pour <code class="inline">formation.local</code>. Connectivité validée, droits d'administrateur local.</p>
+
+<div class="box note"><span class="lbl">Pourquoi le DNS d'abord ?</span><p>Active Directory <strong>repose entièrement sur le DNS</strong> (les fameux enregistrements SRV du Jour 2). Sans un DNS sain pour <code class="inline">formation.local</code>, la promotion échoue ou le domaine devient injoignable. Le Jour 2 n'était pas un hasard : il préparait celui-ci.</p></div>
+<h2 class="sec" id="s1">Active Directory, qu'est-ce que c'est&nbsp;?</h2>
+<div class="box meta"><span class="lbl">La métaphore du service RH</span><p><strong>Active Directory Domain Services</strong> (AD DS), c'est le <strong>service des ressources humaines</strong> d'une entreprise, version informatique. Un annuaire central qui sait <em>qui est qui</em> (les comptes), <em>quelles machines existent</em>, <em>qui appartient à quel groupe</em>, et surtout <em>qui a le droit de faire quoi</em>. Au lieu de gérer chaque poste séparément, on gère tout depuis un point unique : le siège.</p></div>
+
+    <p>Concrètement, AD assure quatre choses : l'<strong>authentification</strong> (vérifier votre badge à l'entrée), l'<strong>autorisation</strong> (décider à quelles pièces votre badge ouvre), la <strong>centralisation</strong> (un seul compte pour toutes les machines), et la <strong>réplication</strong> (plusieurs sièges qui se synchronisent pour résister aux pannes).</p>
+
+<h2 class="sec" id="s2">La hiérarchie : forêt, domaine, OU, objet</h2>
+<div class="box meta"><span class="lbl">Du groupe à la fiche employé</span><p>Reprenons l'entreprise. La <strong>forêt</strong> est le <em>groupe tout entier</em> : la plus grande frontière de sécurité. Un <strong>domaine</strong> est une <em>filiale</em> administrée de façon autonome. Un <strong>arbre</strong> regroupe des filiales partageant le même « nom de famille » (espace de noms contigu). Une <strong>unité d'organisation</strong> (OU) est un <em>classeur de service</em> où l'on range les gens et les machines, et dont on peut confier la clé à un responsable. Un <strong>objet</strong> est une <em>fiche</em> : un employé, un ordinateur, un groupe.</p></div>
+<div class="diagram"><code>FORÊT  formation.local                 (le groupe entier — frontière de sécurité)
+└── DOMAINE  formation.local            (la filiale, unité d&#x27;administration)
+    ├── OU  Utilisateurs                (classeur du personnel)
+    │   ├── Formateurs
+    │   └── Stagiaires
+    ├── OU  Ordinateurs
+    │   ├── Serveurs
+    │   └── Postes_Travail
+    └── OU  Ressources
+        ├── Imprimantes
+        └── Partages</code></div>
+
+    <table>
+      <thead><tr><th>Composant</th><th>Rôle</th><th>Exemple</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Forêt</strong></td><td>Conteneur de plus haut niveau, frontière de sécurité ultime</td><td>la forêt <code>formation.local</code></td></tr>
+        <tr><td><strong>Domaine</strong></td><td>Unité d'administration et de réplication</td><td><code>formation.local</code></td></tr>
+        <tr><td><strong>Arbre</strong></td><td>Domaines à espace de noms contigu</td><td><code>paris.formation.local</code></td></tr>
+        <tr><td><strong>OU</strong></td><td>Rangement et délégation d'administration</td><td><code>OU=Utilisateurs,DC=formation,DC=local</code></td></tr>
+        <tr><td><strong>Objet</strong></td><td>Entité de l'annuaire</td><td><code>CN=jdupont,OU=Utilisateurs,DC=...</code></td></tr>
+      </tbody>
+    </table>
+
+<div class="box warn"><span class="lbl">Le nom de la forêt = le nom de son domaine racine</span><p>Une forêt porte le nom de son <strong>premier domaine</strong> (le domaine racine). Notre forêt s'appelle donc <code class="inline">formation.local</code>, exactement comme le domaine que l'on va créer. On ne mélange pas un nom de forêt et un nom de domaine différents au démarrage.</p></div>
+<div class="box note"><span class="lbl">Lire un nom LDAP</span><p><code class="inline">DC</code> = <em>Domain Component</em> (un morceau du nom de domaine), <code class="inline">OU</code> = unité d'organisation, <code class="inline">CN</code> = <em>Common Name</em> (le nom de l'objet). On lit de droite à gauche : <code class="inline">CN=jdupont,OU=Utilisateurs,DC=formation,DC=local</code> = « l'objet jdupont, dans l'OU Utilisateurs, du domaine formation.local ».</p></div>
+<h2 class="sec" id="s3">Contrôleurs de domaine et rôles FSMO</h2>
+<div class="box meta"><span class="lbl">Le siège et ses guichets uniques</span><p>Un <strong>contrôleur de domaine</strong> (DC) est un <em>siège</em> qui détient le registre AD et valide les badges. On en met plusieurs pour la disponibilité — ils se répliquent. Mais certaines opérations délicates ne peuvent être faites qu'à <strong>un seul endroit</strong> à la fois, comme certains tampons officiels qui n'existent qu'en un exemplaire : ce sont les rôles <strong>FSMO</strong> (<em>Flexible Single Master Operations</em>, « opérations à maître unique »).</p></div>
+
+    <table>
+      <thead><tr><th>Rôle FSMO</th><th>Portée</th><th>Fonction</th></tr></thead>
+      <tbody>
+        <tr><td>Schema Master</td><td>Forêt</td><td>Modifier le schéma (la définition des types d'objets)</td></tr>
+        <tr><td>Domain Naming Master</td><td>Forêt</td><td>Ajouter / retirer des domaines</td></tr>
+        <tr><td>PDC Emulator</td><td>Domaine</td><td>Synchronisation de l'heure, compatibilité, mots de passe</td></tr>
+        <tr><td>RID Master</td><td>Domaine</td><td>Distribuer les identifiants uniques d'objets</td></tr>
+        <tr><td>Infrastructure Master</td><td>Domaine</td><td>Gérer les références entre domaines</td></tr>
+      </tbody>
+    </table>
+
+<div class="box key"><span class="lbl">À retenir</span><p>Sur un premier DC seul, <strong>les 5 rôles FSMO sont sur cette unique machine</strong>. On les répartit seulement quand on ajoute d'autres contrôleurs. Le <strong>catalogue global</strong>, lui, est l'index de toute la forêt : il permet de retrouver n'importe quel objet rapidement.</p></div>
+<h2 class="sec" id="s4">Exercice de conception</h2>
+<p>Avant de construire, on réfléchit à la structure. <strong>Durée</strong> : 45 min. Pour chaque scénario, proposez une structure forêt / domaine / OU, justifiez, placez les contrôleurs de domaine et définissez le nommage DNS.</p>
+
+    <ul>
+      <li><strong>Scénario A &mdash; PME (50 personnes, un site)</strong> : départements Direction, Comptabilité, Commercial, Technique. Une forêt, un domaine, des OU par département suffisent largement. Un DC (idéalement deux pour la disponibilité).</li>
+      <li><strong>Scénario B &mdash; Groupe 3 sites (300 personnes)</strong> : autonomie par site. Un domaine unique avec des <em>sites AD</em> et des OU par localisation ; au moins un DC par site pour l'authentification locale et la réplication.</li>
+      <li><strong>Scénario C &mdash; Holding (1000 personnes, filiales, sécurité élevée)</strong> : séparation forte des environnements (Production, Développement, DMZ). On envisage plusieurs domaines, voire plusieurs forêts pour isoler la sécurité.</li>
+    </ul>
+
+<div class="box tip"><span class="lbl">Principe directeur</span><p>La forêt est la <strong>frontière de sécurité</strong>. Si deux ensembles ne doivent <em>jamais</em> se faire confiance, on les sépare en forêts distinctes. Tant qu'une confiance mutuelle est acceptable, un seul domaine bien découpé en OU suffit le plus souvent.</p></div>
+<h2 class="sec" id="s5">Installer le rôle AD DS</h2>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Installer le rôle Active Directory Domain Services</span>
+<span class="k">Install-WindowsFeature</span> <span class="p">-Name</span> <span class="k">AD-Domain</span>-Services <span class="p">-IncludeManagementTools</span>
+
+<span class="c"># Vérifier</span>
+<span class="k">Get-WindowsFeature</span> <span class="p">-Name</span> <span class="k">AD-Domain</span>-Services</code></pre></div>
+<div class="box note"><span class="lbl">Installer n'est pas promouvoir</span><p>Installer le rôle pose seulement les <em>outils</em> sur le serveur. Le serveur ne devient un contrôleur de domaine qu'après l'étape de <strong>promotion</strong> (&sect;6). Les deux gestes sont distincts.</p></div>
+<h2 class="sec" id="s6">Promouvoir le serveur en premier contrôleur</h2>
+<div class="box meta"><span class="lbl">Transformer le serveur en siège</span><p>La <strong>promotion</strong> transforme un serveur ordinaire en <em>siège</em> qui tient le registre. Comme c'est le tout premier, il faut d'abord <strong>créer la forêt</strong> et son domaine racine. Le siège ouvre alors ses guichets : authentification, réplication, annuaire.</p></div>
+<h3 class="sub" id="s6-1">En interface graphique</h3>
+
+    <ol>
+      <li>Après l'installation du rôle, le Gestionnaire de serveur affiche un drapeau d'avertissement : <strong>Promouvoir ce serveur en contrôleur de domaine</strong>.</li>
+      <li>Choisir <strong>Ajouter une nouvelle forêt</strong> &rarr; nom de domaine racine : <code class="inline">formation.local</code>.</li>
+      <li>Définir le <strong>mot de passe DSRM</strong> (mode de restauration) : <code class="inline">P@ssw0rd123!</code></li>
+      <li>Laisser le NetBIOS proposé : <code class="inline">FORMATION</code>. Valider les contrôles, puis lancer (redémarrage automatique).</li>
+    </ol>
+
+<h3 class="sub" id="s6-2">En PowerShell</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Créer la forêt et promouvoir ce serveur en premier DC</span>
+<span class="k">Install-ADDSForest</span> <span class="p">-DomainName</span> <span class="s">&quot;formation.local&quot;</span> `
+                   <span class="p">-DomainNetbiosName</span> <span class="s">&quot;FORMATION&quot;</span> `
+                   <span class="p">-InstallDns</span>:<span class="v">$true</span> `
+                   <span class="p">-SafeModeAdministratorPassword</span> (<span class="k">Read-Host</span> <span class="p">-AsSecureString</span> <span class="s">&quot;Mot de passe DSRM&quot;</span>)</code></pre></div>
+<p><em>Analysons cette commande ligne par ligne :</em></p>
+
+    <ul>
+      <li><code class="inline">-DomainName "formation.local"</code> : le nom du domaine racine (et donc de la forêt).</li>
+      <li><code class="inline">-DomainNetbiosName "FORMATION"</code> : le nom court, à l'ancienne, utilisé pour ouvrir une session (<code class="inline">FORMATION\jdupont</code>).</li>
+      <li><code class="inline">-InstallDns:$true</code> : installe et intègre le DNS au domaine (les enregistrements SRV se créent automatiquement).</li>
+      <li><code class="inline">-SafeModeAdministratorPassword</code> : le mot de passe DSRM, demandé de façon masquée par <code class="inline">Read-Host -AsSecureString</code>.</li>
+    </ul>
+
+<div class="box warn"><span class="lbl">Le mot de passe DSRM : la clé du coffre</span><p>Le mot de passe <strong>DSRM</strong> (<em>Directory Services Restore Mode</em>) est la clé de secours pour réparer AD si le domaine tombe. Il est <strong>différent</strong> du mot de passe administrateur ordinaire et doit être conservé précieusement : sans lui, pas de restauration possible.</p></div>
+<h2 class="sec" id="s7">Configuration réseau après promotion</h2>
+<div class="box meta"><span class="lbl">Le siège qui s'inscrit dans son propre annuaire</span><p>Une fois promu, le serveur tient lui-même l'annuaire du domaine. Il doit donc <strong>se consulter lui-même</strong> pour résoudre les noms : son DNS primaire devient <code class="inline">127.0.0.1</code> (« moi-même »). C'est le geste que tout le monde oublie, et qui casse silencieusement le domaine.</p></div>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Le serveur pointe vers lui-même pour le DNS (LAN = nom de la carte interne du Jour 1)</span>
+<span class="k">Set-DnsClientServerAddress</span> <span class="p">-InterfaceAlias</span> <span class="s">&quot;LAN&quot;</span> <span class="p">-ServerAddresses</span> <span class="s">&quot;127.0.0.1&quot;</span>
+
+<span class="c"># Vérifier</span>
+<span class="k">Get-DnsClientServerAddress</span>
+
+<span class="c"># Conserver des redirecteurs pour Internet</span>
+<span class="k">Set-DnsServerForwarder</span> <span class="p">-IPAddress</span> <span class="s">&quot;8.8.8.8&quot;</span>,<span class="s">&quot;1.1.1.1&quot;</span>
+
+<span class="c"># Tester la résolution du domaine et du DC</span>
+<span class="k">Resolve-DnsName</span> formation.local
+<span class="k">Resolve-DnsName</span> srv-dc01.formation.local</code></pre></div>
+<div class="box warn"><span class="lbl">Le piège classique du Jour 1 revisité</span><p>Au Jour 1, on laissait le DNS de la carte interne vide (Internet venait de la carte NAT). Maintenant que le serveur <em>est</em> le DNS du domaine, il doit pointer vers <code class="inline">127.0.0.1</code>. Si vous le laissez sur un DNS externe (8.8.8.8 en primaire), il ne trouvera pas ses propres enregistrements SRV et l'ouverture de session échouera.</p></div>
+<h2 class="sec" id="tp1">TP guidé 1 &mdash; premier contrôleur de domaine</h2>
+<p><strong>Objectif</strong> : promouvoir <code class="inline">SRV-DC01</code> en premier DC de la forêt <code class="inline">formation.local</code>. <strong>Durée</strong> : 90 min.</p>
+<h3 class="sub" id="tp1-1">Étape 1 &mdash; Préparer et installer</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Vérifier l&#x27;existant</span>
+hostname                 <span class="c"># SRV-DC01</span>
+<span class="k">Get-NetIPConfiguration</span>   <span class="c"># IP statique 192.168.100.10 ?</span>
+<span class="k">Resolve-DnsName</span> formation.local   <span class="c"># le DNS du Jour 2 répond ?</span>
+
+<span class="c"># Installer le rôle</span>
+<span class="k">Install-WindowsFeature</span> <span class="p">-Name</span> <span class="k">AD-Domain</span>-Services <span class="p">-IncludeManagementTools</span></code></pre></div>
+<h3 class="sub" id="tp1-2">Étape 2 &mdash; Promouvoir</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Install-ADDSForest</span> <span class="p">-DomainName</span> <span class="s">&quot;formation.local&quot;</span> `
+                   <span class="p">-DomainNetbiosName</span> <span class="s">&quot;FORMATION&quot;</span> `
+                   <span class="p">-InstallDns</span>:<span class="v">$true</span> `
+                   <span class="p">-SafeModeAdministratorPassword</span> (<span class="k">Read-Host</span> <span class="p">-AsSecureString</span> <span class="s">&quot;Mot de passe DSRM&quot;</span>)
+<span class="c"># Le serveur redémarre automatiquement à la fin.</span></code></pre></div>
+<h3 class="sub" id="tp1-3">Étape 3 &mdash; Réseau post-promotion</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Set-DnsClientServerAddress</span> <span class="p">-InterfaceAlias</span> <span class="s">&quot;LAN&quot;</span> <span class="p">-ServerAddresses</span> <span class="s">&quot;127.0.0.1&quot;</span>
+<span class="k">Set-DnsServerForwarder</span> <span class="p">-IPAddress</span> <span class="s">&quot;8.8.8.8&quot;</span>,<span class="s">&quot;1.1.1.1&quot;</span></code></pre></div>
+<h3 class="sub" id="tp1-4">Étape 4 &mdash; Valider</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># 1. Les services AD doivent tourner</span>
+<span class="k">Get-Service</span> ADWS, KDC, NETLOGON | <span class="k">Select-Object</span> Name, Status
+
+<span class="c"># 2. Le domaine et la forêt</span>
+<span class="k">Get-ADDomain</span> | <span class="k">Select-Object</span> DNSRoot, NetBIOSName, DomainMode
+
+<span class="c"># 3. Le contrôleur de domaine</span>
+<span class="k">Get-ADDomainController</span> <span class="p">-Filter</span> * | <span class="k">Select-Object</span> Name, IPv4Address, OperatingSystem
+
+<span class="c"># 4. Les rôles FSMO (les 5 sur cette machine)</span>
+netdom query fsmo
+
+<span class="c"># 5. La résolution du domaine</span>
+<span class="k">Resolve-DnsName</span> formation.local <span class="p">-Type</span> A</code></pre></div>
+<div class="box key"><span class="lbl">Critères de réussite</span><p><code class="inline">ADWS</code>, <code class="inline">KDC</code> et <code class="inline">NETLOGON</code> sont <em>Running</em> ; <code class="inline">Get-ADDomain</code> renvoie <code class="inline">formation.local</code> ; les 5 rôles FSMO pointent vers <code class="inline">SRV-DC01</code>. Le domaine est né.</p></div>
+<h2 class="sec" id="s8">Construire la structure d'unités d'organisation</h2>
+<div class="box meta"><span class="lbl">Le classeur à intercalaires</span><p>Une <strong>OU</strong> est un <em>intercalaire</em> dans le grand classeur du domaine. On y range les comptes et les machines par service, ce qui permet deux choses : appliquer des règles différentes par dossier (au Jour 4 : les stratégies de groupe), et <strong>confier la clé d'un seul intercalaire</strong> à un responsable sans lui donner accès à tout le classeur (la délégation).</p></div>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># OU racine de l&#x27;organisation</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;EcoleIT&quot;</span> <span class="p">-Path</span> <span class="s">&quot;DC=formation,DC=local&quot;</span> `
+                         <span class="p">-Description</span> <span class="s">&quot;OU racine École IT&quot;</span>
+
+<span class="c"># Branche Utilisateurs et ses sous-OU</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;Utilisateurs&quot;</span> <span class="p">-Path</span> <span class="s">&quot;OU=EcoleIT,DC=formation,DC=local&quot;</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;Formateurs&quot;</span>     <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,DC=formation,DC=local&quot;</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;Administration&quot;</span> <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,DC=formation,DC=local&quot;</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;Stagiaires&quot;</span>     <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,DC=formation,DC=local&quot;</span>
+
+<span class="c"># Branche Ordinateurs</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;Ordinateurs&quot;</span>   <span class="p">-Path</span> <span class="s">&quot;OU=EcoleIT,DC=formation,DC=local&quot;</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;Serveurs&quot;</span>      <span class="p">-Path</span> <span class="s">&quot;OU=Ordinateurs,OU=EcoleIT,DC=formation,DC=local&quot;</span>
+<span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="s">&quot;PostesTravail&quot;</span> <span class="p">-Path</span> <span class="s">&quot;OU=Ordinateurs,OU=EcoleIT,DC=formation,DC=local&quot;</span></code></pre></div>
+<p><em>Comment lire ces commandes :</em></p>
+
+    <ul>
+      <li><code class="inline">-Name</code> = le nom de l'intercalaire à créer.</li>
+      <li><code class="inline">-Path</code> = <em>où</em> on le range, en notation LDAP (lue de droite à gauche). On empile les <code class="inline">OU=</code> pour descendre dans l'arborescence.</li>
+    </ul>
+
+<h3 class="sub" id="s8-1">Protéger contre la suppression accidentelle</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Set-ADOrganizationalUnit</span> <span class="p">-Identity</span> <span class="s">&quot;OU=EcoleIT,DC=formation,DC=local&quot;</span> `
+                         <span class="p">-ProtectedFromAccidentalDeletion</span> <span class="v">$true</span>
+
+<span class="c"># Lister les OU protégées</span>
+<span class="k">Get-ADOrganizationalUnit</span> <span class="p">-Filter</span> {ProtectedFromAccidentalDeletion <span class="p">-eq</span> <span class="v">$true</span>} | <span class="k">Select-Object</span> Name</code></pre></div>
+<div class="box tip"><span class="lbl">Toujours protéger les OU importantes</span><p><code class="inline">-ProtectedFromAccidentalDeletion $true</code> empêche une suppression d'un clic. Sur une OU qui contient des dizaines de comptes, c'est un filet de sécurité indispensable. C'est d'ailleurs le comportement par défaut via l'interface graphique.</p></div>
+<h2 class="sec" id="tp2">TP guidé 2 &mdash; structure de l'École IT</h2>
+<p><strong>Objectif</strong> : créer toute la structure d'OU de l'École IT (80 personnes, 8 serveurs, 60 postes). <strong>Durée</strong> : 60 min.</p>
+<p>On factorise avec une petite fonction qui crée <em>et</em> protège chaque OU :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="v">$BaseDN</span> = <span class="s">&quot;DC=formation,DC=local&quot;</span>
+
+function <span class="k">New-ProtectedOU</span> {
+    param(<span class="v">$Name</span>, <span class="v">$Path</span>)
+    <span class="k">New-ADOrganizationalUnit</span> <span class="p">-Name</span> <span class="v">$Name</span> <span class="p">-Path</span> <span class="v">$Path</span>
+    <span class="k">Set-ADOrganizationalUnit</span> <span class="p">-Identity</span> <span class="s">&quot;OU=$Name,$Path&quot;</span> <span class="p">-ProtectedFromAccidentalDeletion</span> <span class="v">$true</span>
+}
+
+<span class="c"># Racine</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;EcoleIT&quot;</span> <span class="p">-Path</span> <span class="v">$BaseDN</span>
+
+<span class="c"># Utilisateurs</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Utilisateurs&quot;</span>   <span class="p">-Path</span> <span class="s">&quot;OU=EcoleIT,$BaseDN&quot;</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Direction&quot;</span>      <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,$BaseDN&quot;</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Administration&quot;</span> <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,$BaseDN&quot;</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Formateurs&quot;</span>     <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,$BaseDN&quot;</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Stagiaires&quot;</span>     <span class="p">-Path</span> <span class="s">&quot;OU=Utilisateurs,OU=EcoleIT,$BaseDN&quot;</span>
+
+<span class="c"># Ordinateurs</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Ordinateurs&quot;</span>   <span class="p">-Path</span> <span class="s">&quot;OU=EcoleIT,$BaseDN&quot;</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;Serveurs&quot;</span>      <span class="p">-Path</span> <span class="s">&quot;OU=Ordinateurs,OU=EcoleIT,$BaseDN&quot;</span>
+<span class="k">New-ProtectedOU</span> <span class="p">-Name</span> <span class="s">&quot;PostesTravail&quot;</span> <span class="p">-Path</span> <span class="s">&quot;OU=Ordinateurs,OU=EcoleIT,$BaseDN&quot;</span></code></pre></div>
+<p>Vérifier le résultat :</p>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Get-ADOrganizationalUnit</span> <span class="p">-Filter</span> * <span class="p">-SearchBase</span> <span class="s">&quot;OU=EcoleIT,DC=formation,DC=local&quot;</span> |
+    <span class="k">Select-Object</span> Name, DistinguishedName
+dsa.msc   <span class="c"># contrôle visuel dans Active Directory Users and Computers</span></code></pre></div>
+<div class="box note"><span class="lbl">Définir une fonction en PowerShell</span><p><code class="inline">function Nom { param(...) ... }</code> crée une commande réutilisable. Ici, <code class="inline">New-ProtectedOU</code> évite de répéter deux lignes par OU : on décrit la logique <em>une fois</em>, on l'appelle autant que nécessaire. C'est exactement l'esprit « script » du Jour 1.</p></div>
+<h2 class="sec" id="s9">Les outils d'administration</h2>
+<div class="box meta"><span class="lbl">Trois façons d'ouvrir le classeur</span><p>On peut consulter et modifier l'annuaire de trois manières : à la souris (<strong>ADUC</strong>), au scalpel pour les attributs cachés (<strong>ADSI Edit</strong>, à manier avec prudence), ou en série par script (<strong>PowerShell AD</strong>). Trois portes vers le même classeur, pour des usages différents.</p></div>
+<h3 class="sub" id="s9-1">ADUC &mdash; Active Directory Users and Computers</h3>
+
+    <p>Lancement : <code class="inline">dsa.msc</code>. La console graphique du quotidien. Activez <strong>Affichage &rarr; Fonctionnalités avancées</strong> pour voir tous les onglets.</p>
+    <table>
+      <thead><tr><th>Action</th><th>Procédure</th></tr></thead>
+      <tbody>
+        <tr><td>Créer un utilisateur</td><td>Clic droit dans l'OU &rarr; Nouveau &rarr; Utilisateur</td></tr>
+        <tr><td>Créer un groupe</td><td>Clic droit dans l'OU &rarr; Nouveau &rarr; Groupe</td></tr>
+        <tr><td>Réinitialiser un mot de passe</td><td>Clic droit sur l'utilisateur &rarr; Réinitialiser le mot de passe</td></tr>
+        <tr><td>Rechercher</td><td>Clic droit sur le domaine &rarr; Rechercher (F3)</td></tr>
+      </tbody>
+    </table>
+
+<h3 class="sub" id="s9-2">PowerShell AD &mdash; pour l'échelle</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Découvrir les commandes AD disponibles</span>
+<span class="k">Get-Command</span> *AD* | <span class="k">Group-Object</span> Noun | <span class="k">Sort-Object</span> Count <span class="p">-Descending</span> | <span class="k">Select-Object</span> <span class="p">-First</span> <span class="num">10</span>
+
+<span class="c"># Lire tous les attributs d&#x27;un objet</span>
+<span class="k">Get-ADUser</span> Administrateur <span class="p">-Properties</span> *
+
+<span class="c"># Modifier un attribut précis</span>
+<span class="k">Set-ADUser</span> Administrateur <span class="p">-Department</span> <span class="s">&quot;Direction&quot;</span>
+
+<span class="c"># Inventaires utiles</span>
+<span class="k">Get-ADUser</span> <span class="p">-Filter</span> * | <span class="k">Select-Object</span> Name, Enabled
+<span class="k">Get-ADGroup</span> <span class="p">-Filter</span> * | <span class="k">Select-Object</span> Name</code></pre></div>
+<h3 class="sub" id="s9-3">ADSI Edit &mdash; l'éditeur expert</h3>
+<p>Lancement : <code class="inline">adsiedit.msc</code>. Il montre les attributs de bas niveau invisibles dans ADUC, et permet d'explorer les partitions de l'annuaire.</p>
+<div class="box warn"><span class="lbl">Outil à risque</span><p>ADSI Edit modifie l'annuaire <strong>sans garde-fou</strong> : une mauvaise manipulation peut corrompre AD. On l'utilise pour <em>observer</em> et comprendre, ou ponctuellement sur instruction précise. Pour le travail courant, on reste sur ADUC ou PowerShell.</p></div>
+
+    <table>
+      <thead><tr><th>Partition</th><th>Contenu</th><th>Réplication</th></tr></thead>
+      <tbody>
+        <tr><td>Domain</td><td>Objets du domaine (comptes, machines, OU)</td><td>Tous les DC du domaine</td></tr>
+        <tr><td>Configuration</td><td>Topologie de la forêt (sites, services)</td><td>Tous les DC de la forêt</td></tr>
+        <tr><td>Schema</td><td>Définition des types d'objets et attributs</td><td>Tous les DC de la forêt</td></tr>
+      </tbody>
+    </table>
+
+<h2 class="sec" id="tp3">TP guidé 3 &mdash; maîtriser les outils</h2>
+<p><strong>Objectif</strong> : explorer ADUC, PowerShell AD et ADSI Edit, puis produire un rapport. <strong>Durée</strong> : 90 min.</p>
+<h3 class="sub" id="tp3-1">Partie A &mdash; ADUC</h3>
+
+    <ol>
+      <li>Ouvrir <code class="inline">dsa.msc</code>, activer les fonctionnalités avancées.</li>
+      <li>Créer un utilisateur test dans l'OU <strong>Formateurs</strong>.</li>
+      <li>Créer un groupe de sécurité <code class="inline">Formateurs_Math</code> et y ajouter l'utilisateur.</li>
+    </ol>
+
+<h3 class="sub" id="tp3-2">Partie B &mdash; PowerShell AD</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Créer 3 groupes de promotion</span>
+<span class="s">&quot;B1&quot;</span>,<span class="s">&quot;B2&quot;</span>,<span class="s">&quot;B3&quot;</span> | <span class="k">ForEach-Object</span> {
+    <span class="k">New-ADGroup</span> <span class="p">-Name</span> <span class="v">$_</span> <span class="p">-GroupScope</span> Global <span class="p">-Path</span> <span class="s">&quot;OU=Stagiaires,OU=Utilisateurs,OU=EcoleIT,DC=formation,DC=local&quot;</span>
+}
+
+<span class="c"># Repérer les comptes désactivés et les groupes</span>
+<span class="k">Get-ADUser</span> <span class="p">-Filter</span> {Enabled <span class="p">-eq</span> <span class="v">$false</span>} | <span class="k">Select-Object</span> Name
+<span class="k">Get-ADGroup</span> <span class="p">-Filter</span> * | <span class="k">Select-Object</span> Name</code></pre></div>
+<h3 class="sub" id="tp3-3">Partie C &mdash; Rapport AD</h3>
+<div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="v">$Report</span> = @()
+<span class="v">$Domain</span> = <span class="k">Get-ADDomain</span>
+<span class="v">$Report</span> += <span class="s">&quot;Domaine : &quot;</span>          + <span class="v">$Domain</span>.DNSRoot
+<span class="v">$Report</span> += <span class="s">&quot;Niveau fonctionnel : &quot;</span> + <span class="v">$Domain</span>.DomainMode
+<span class="v">$Report</span> += <span class="s">&quot;Utilisateurs : &quot;</span>     + (<span class="k">Get-ADUser</span> <span class="p">-Filter</span> *).Count
+<span class="v">$Report</span> += <span class="s">&quot;Ordinateurs : &quot;</span>      + (<span class="k">Get-ADComputer</span> <span class="p">-Filter</span> *).Count
+<span class="v">$Report</span> += <span class="s">&quot;Groupes : &quot;</span>          + (<span class="k">Get-ADGroup</span> <span class="p">-Filter</span> *).Count
+<span class="v">$Report</span> += <span class="s">&quot;OU : &quot;</span>               + (<span class="k">Get-ADOrganizationalUnit</span> <span class="p">-Filter</span> *).Count
+<span class="v">$Report</span> += <span class="s">&quot;Contrôleurs : &quot;</span>      + (<span class="k">Get-ADDomainController</span> <span class="p">-Filter</span> *).Count
+<span class="v">$Report</span> | <span class="k">ForEach-Object</span> { <span class="k">Write-Host</span> <span class="v">$_</span> <span class="p">-ForegroundColor</span> Cyan }</code></pre></div>
+<div class="box note"><span class="lbl">Le tableau et le pipe ForEach</span><p><code class="inline">$Report = @()</code> crée un tableau vide ; <code class="inline">+=</code> y ajoute des lignes. <code class="inline">| ForEach-Object { ... }</code> exécute une action pour chaque élément. On retrouve l'idée de « recette répétée » du Jour 1, appliquée à une liste.</p></div>
+<h2 class="sec" id="recap">Ce qu'il faut retenir</h2>
+
+    <table class="recap">
+      <thead><tr><th>Notion</th><th>L'essentiel</th></tr></thead>
+      <tbody>
+        <tr><td>AD DS</td><td>L'annuaire central : authentification, autorisation, centralisation, réplication.</td></tr>
+        <tr><td>Hiérarchie</td><td>Forêt (frontière de sécurité) &gt; domaine &gt; OU &gt; objet. La forêt porte le nom de son domaine racine.</td></tr>
+        <tr><td>DC &amp; FSMO</td><td>Le contrôleur tient le registre ; 5 rôles FSMO uniques, tous sur le premier DC.</td></tr>
+        <tr><td>Installer / promouvoir</td><td>Deux gestes distincts : <code>Install-WindowsFeature AD-Domain-Services</code> puis <code>Install-ADDSForest</code>.</td></tr>
+        <tr><td>DNS post-promotion</td><td>Le DC pointe son DNS sur <code>127.0.0.1</code> (lui-même), redirecteurs pour Internet.</td></tr>
+        <tr><td>DSRM</td><td>Mot de passe de restauration, distinct de l'administrateur, à garder précieusement.</td></tr>
+        <tr><td>OU</td><td>Rangement + délégation + cible des stratégies (Jour 4). Protéger contre la suppression.</td></tr>
+        <tr><td>Outils</td><td>ADUC (souris), PowerShell AD (échelle), ADSI Edit (expert, prudence).</td></tr>
+      </tbody>
+    </table>
+
+<h2 class="sec" id="reflexes">Réflexes &amp; contrôle</h2>
+<div class="box key"><span class="lbl">Réflexes anti-erreur</span><ul><li>Pas de DNS sain &rarr; pas de promotion réussie. Tester <code class="inline">Resolve-DnsName formation.local</code> d'abord.</li><li>Après promotion, DNS du DC = <code class="inline">127.0.0.1</code>, sinon l'ouverture de session casse.</li><li>Le nom de la forêt = le nom du domaine racine.</li><li>Mot de passe DSRM &ne; mot de passe administrateur.</li><li>Chemin LDAP &rarr; se lit de droite à gauche.</li></ul></div>
+
+    <p>Questions de contrôle :</p>
+    <ol>
+      <li>Quelle est la différence entre une forêt et un domaine ?</li>
+      <li>Pourquoi le DNS doit-il fonctionner avant d'installer Active Directory ?</li>
+      <li>Que représentent les rôles FSMO, et où sont-ils sur un premier contrôleur ?</li>
+      <li>À quoi sert le mot de passe DSRM ?</li>
+      <li>Citez deux raisons de structurer le domaine en unités d'organisation.</li>
+    </ol>
+
+  </main>
+</div>
+
+<footer>J3_Active_Directory — Support de cours</footer>
+
+</body>
+</html>
