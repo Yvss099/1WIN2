@@ -273,6 +273,24 @@
       <p>Faites le même montage <strong>à deux cartes</strong> sur la VM cliente. Elle aura ainsi Internet (NAT) pour installer RSAT, <em>et</em> l'IP <code class="inline">192.168.10.50</code> sur le réseau interne pour atteindre le serveur.</p>
     </div>
 
+    <h3 class="sub" id="s1-5">Accès RDP depuis l'hôte (astuce labo)</h3>
+    <p>Le <strong>réseau interne « lab »</strong> est cloisonné : seules les VM se voient entre elles, <strong>votre PC hôte n'y a pas accès</strong>. Pour ouvrir une session RDP <em>depuis l'hôte</em> vers le serveur (pratique en formation, sans dépendre du réseau de la salle), on ajoute une <strong>redirection de port sur la carte NAT</strong> — sans toucher au réseau interne. La même recette fonctionne à l'identique sur chaque poste de la promo.</p>
+    <ul>
+      <li>VM éteinte : <em>Configuration → Réseau → Carte 1 (NAT) → Avancé → Redirection de ports</em>.</li>
+      <li>Ajouter une règle : Nom <code class="inline">RDP</code>, Protocole <code class="inline">TCP</code>, IP hôte <code class="inline">127.0.0.1</code>, Port hôte <code class="inline">13389</code>, IP invité <code class="inline">10.0.2.15</code>, Port invité <code class="inline">3389</code>.</li>
+    </ul>
+    <div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Hôte (PowerShell / Terminal)</div><pre><code><span class="c"># Équivalent en ligne de commande, VM éteinte (adaptez le nom de la VM) :</span>
+VBoxManage modifyvm <span class="s">"SRV-FORM-XX"</span> --natpf1 <span class="s">"RDP,tcp,127.0.0.1,13389,10.0.2.15,3389"</span></code></pre></div>
+    <p>Depuis l'hôte, le client RDP se connecte alors sur <code class="inline">localhost:13389</code>. Prérequis sur le serveur : <strong>Bureau à distance activé</strong> et <strong>pare-feu RDP ouvert</strong> (voir §3.3).</p>
+    <div class="box warn">
+      <span class="lbl">Pourquoi 13389 et pas 3389 ?</span>
+      <p>Si l'hôte est lui-même un Windows, le port <code class="inline">3389</code> peut déjà être pris (RDP de l'hôte, plages réservées Hyper-V/WSL) — la redirection échoue alors silencieusement. Un port hôte décalé comme <code class="inline">13389</code> évite tout conflit.</p>
+    </div>
+    <div class="box tip">
+      <span class="lbl">Et l'IP statique alors ?</span>
+      <p>La redirection vise <code class="inline">10.0.2.15</code> : c'est l'adresse <strong>DHCP de la carte NAT</strong> (Carte 1), <em>pas</em> l'IP statique du lab. L'IP statique <code class="inline">192.168.10.10</code> reste sur la <strong>carte interne</strong> (Carte 2) pour le dialogue serveur ↔ client. Le service RDP écoute sur toutes les cartes à la fois, donc il répond aussi bien sur le réseau interne (depuis le client VM) que via la redirection NAT (depuis l'hôte). <strong>Ne posez jamais d'IP statique sur la carte NAT</strong>, sinon la redirection ne tombe plus sur personne.</p>
+    </div>
+
     <!-- ================= SECTION 2 ================= -->
     <h2 class="sec" id="s2">Installer Windows Server 2022</h2>
     <p>Vous êtes prestataire IT. Le client veut une machine <em>clean</em>, en réseau, documentée. On installe l'édition avec interface graphique, on partitionne, on définit le mot de passe.</p>
@@ -464,7 +482,7 @@
 
     <!-- ================= SECTION 6 ================= -->
     <h2 class="sec" id="s6">Administration distante (RSAT + WinRM)</h2>
-    <p>En entreprise, on n'ouvre <strong>jamais</strong> de session RDP directe sur un serveur de prod : question de sécurité, de traçabilité, de productivité. On administre depuis son poste, via RSAT et WinRM. (Dans ce TP, le serveur passe à <code class="inline">192.168.10.20</code> et le client à <code class="inline">192.168.10.50</code> — toujours sur le réseau interne.)</p>
+    <p>En entreprise, on n'ouvre <strong>jamais</strong> de session RDP directe sur un serveur de prod : question de sécurité, de traçabilité, de productivité. On administre depuis son poste, via RSAT et WinRM. (Dans ce TP, le serveur est en <code class="inline">192.168.10.10</code> et le client en <code class="inline">192.168.10.50</code> — toujours sur le réseau interne.)</p>
 
     <h3 class="sub" id="s6-1">Côté serveur : activer l'écoute distante</h3>
 <div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="k">Enable-PSRemoting</span> <span class="p">-Force</span>      <span class="c"># active WinRM, ouvre le port 5985, configure les services</span>
@@ -475,24 +493,24 @@
 <span class="k">Get-WindowsCapability</span> <span class="p">-Online</span> <span class="p">-Name</span> <span class="s">"RSAT*"</span> | <span class="k">Add-WindowsCapability</span> <span class="p">-Online</span>
 
 <span class="c"># Hors domaine, déclarer le serveur comme "de confiance"</span>
-<span class="k">Set-Item</span> WSMan:\localhost\Client\TrustedHosts <span class="p">-Value</span> <span class="s">"192.168.10.20"</span> <span class="p">-Force</span></code></pre></div>
+<span class="k">Set-Item</span> WSMan:\localhost\Client\TrustedHosts <span class="p">-Value</span> <span class="s">"192.168.10.10"</span> <span class="p">-Force</span></code></pre></div>
 
     <h3 class="sub" id="s6-3">Enter-PSSession vs Invoke-Command</h3>
 <div class="ps"><div class="ps-bar"><span class="ps-ico"></span>Administrator: Windows PowerShell</div><pre><code><span class="c"># Tester le canal WinRM (doit répondre du XML "Microsoft Corporation")</span>
-<span class="k">Test-WSMan</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.20</span>
+<span class="k">Test-WSMan</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.10</span>
 
 <span class="c"># SESSION INTERACTIVE : on "entre" sur le serveur, on tape plusieurs commandes</span>
-<span class="k">Enter-PSSession</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.20</span> <span class="p">-Credential</span> (<span class="k">Get-Credential</span>)
+<span class="k">Enter-PSSession</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.10</span> <span class="p">-Credential</span> (<span class="k">Get-Credential</span>)
 
 <span class="c"># EXÉCUTION "ONE-SHOT" : une seule commande à distance, sans ouvrir de session</span>
-<span class="k">Invoke-Command</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.20</span> `
+<span class="k">Invoke-Command</span> <span class="p">-ComputerName</span> <span class="num">192.168.10.10</span> `
                <span class="p">-Credential</span> (<span class="k">Get-Credential</span>) `
                <span class="p">-ScriptBlock</span> { <span class="k">Get-Service</span> | <span class="k">Where-Object</span> Status -eq <span class="s">"Running"</span> }</code></pre></div>
     <div class="box key">
       <span class="lbl">La différence à retenir</span>
       <p><strong>Enter-PSSession</strong> = vous <em>entrez</em> dans le serveur pour une session interactive (plusieurs commandes d'affilée). <strong>Invoke-Command</strong> = vous <em>envoyez</em> une commande, elle s'exécute, vous récupérez le résultat — idéal pour une action unique, ou sur <em>plusieurs</em> serveurs en parallèle.</p>
     </div>
-    <p><em>Captures</em> : sortie réussie de <code class="inline">Test-WSMan</code>, prompt <code class="inline">[192.168.10.20]:</code>, et le serveur en vert dans le Gestionnaire de serveur.</p>
+    <p><em>Captures</em> : sortie réussie de <code class="inline">Test-WSMan</code>, prompt <code class="inline">[192.168.10.10]:</code>, et le serveur en vert dans le Gestionnaire de serveur.</p>
 
     <!-- ================= SECTION 7 ================= -->
     <h2 class="sec" id="s7">Vérifications finales</h2>

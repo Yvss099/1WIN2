@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QCM — Administration Windows Server &amp; Active Directory</title>
+<style>
+  :root{
+    --bg:#eef1f7;
+    --surface:#ffffff;
+    --ink:#16203a;
+    --ink-soft:#3a4666;
+    --muted:#64708c;
+    --line:#dde3ef;
+    --navy:#0b1b3a;
+    --navy-2:#10254f;
+    --blue:#2d5bff;
+    --blue-soft:#e7edff;
+    --green:#16a34a;
+    --green-bg:#e8f9ee;
+    --red:#dc2626;
+    --red-bg:#fdeaea;
+    --amber:#b7791f;
+    --amber-bg:#fdf3e0;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(16,32,79,.06),0 8px 28px rgba(16,32,79,.07);
+    --mono:"Cascadia Code","Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans);
+    background:
+      radial-gradient(1200px 500px at 80% -10%, #dfe6fb 0%, transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:840px;margin:0 auto;padding:28px 18px 80px}
+
+  /* ---------- Header ---------- */
+  header.app{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+  .logo{
+    width:46px;height:46px;border-radius:11px;flex:0 0 auto;
+    background:linear-gradient(150deg,var(--navy),var(--navy-2));
+    color:#7fffd4;font-family:var(--mono);font-weight:700;font-size:20px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow);
+  }
+  .logo::before{content:">_"}
+  header.app h1{font-size:1.18rem;margin:0;letter-spacing:-.2px}
+  header.app p{margin:1px 0 0;color:var(--muted);font-size:.86rem}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:24px}
+
+  /* ---------- Start screen ---------- */
+  .lead{color:var(--muted);margin:.2rem 0 1.4rem;font-size:.96rem}
+  .field{margin-bottom:22px}
+  .field > label{display:block;font-weight:600;font-size:.82rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:7px 14px;border-radius:999px;font-size:.88rem;cursor:pointer;
+    transition:.15s;user-select:none;font-family:inherit;
+  }
+  .chip:hover{border-color:#b9c4e0}
+  .chip[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .chip .count{opacity:.6;font-size:.78em;margin-left:5px}
+  .chip[aria-pressed="true"] .count{opacity:.8}
+
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;flex-wrap:wrap}
+  .seg button{border:0;background:#fff;padding:8px 16px;font-size:.88rem;cursor:pointer;font-family:inherit;color:var(--ink);border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--blue-soft);color:var(--blue);font-weight:600}
+
+  .hint{font-size:.82rem;color:var(--muted);margin-top:8px}
+  .summary{background:var(--blue-soft);border:1px solid #d2ddff;border-radius:10px;padding:12px 14px;font-size:.9rem;color:var(--navy-2);margin-top:6px}
+  .summary b{color:var(--blue)}
+
+  .btn{
+    appearance:none;border:0;border-radius:11px;font-family:inherit;font-size:1rem;
+    font-weight:600;padding:13px 22px;cursor:pointer;transition:.15s;
+  }
+  .btn-primary{background:var(--blue);color:#fff;box-shadow:0 6px 18px rgba(45,91,255,.28)}
+  .btn-primary:hover{background:#1f4cf0}
+  .btn-primary:disabled{background:#aab6d6;box-shadow:none;cursor:not-allowed}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:#b9c4e0}
+  .btn-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:8px}
+
+  /* ---------- Quiz screen ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+  .qcount{font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+  .qcount b{color:var(--ink)}
+  .score-pill{font-size:.82rem;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-family:var(--mono)}
+  .score-pill .ok{color:var(--green);font-weight:700}
+  .progress{height:7px;background:#e3e8f3;border-radius:999px;overflow:hidden;margin-bottom:22px}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),#6f8cff);width:0;transition:width .35s ease}
+
+  .badges{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .badge{font-size:.72rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+  .badge.theme{background:var(--navy);color:#fff}
+  .badge.level{background:var(--amber-bg);color:var(--amber)}
+  .badge.level.spe{background:#eaf1ff;color:var(--blue)}
+
+  .qtext{font-size:1.14rem;font-weight:600;line-height:1.45;margin:2px 0 0}
+  .code{
+    margin:16px 0 4px;background:var(--navy);color:#e8ecf6;border-radius:10px;
+    padding:13px 15px;font-family:var(--mono);font-size:.86rem;line-height:1.5;
+    overflow-x:auto;white-space:pre-wrap;word-break:break-word;border:1px solid #1c2f57;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+  .code .tok-cmd{color:#7fd3ff}
+  .code .tok-par{color:#ffd479}
+  .code .tok-str{color:#9be59b}
+  .code .tok-var{color:#ff9bb3}
+  .code .prompt{color:#5f7bbf;user-select:none}
+
+  .options{display:flex;flex-direction:column;gap:11px;margin-top:18px}
+  .opt{
+    display:flex;gap:13px;align-items:flex-start;text-align:left;width:100%;
+    border:1.5px solid var(--line);background:#fff;border-radius:12px;
+    padding:14px 16px;cursor:pointer;font-family:inherit;font-size:.97rem;color:var(--ink);
+    transition:.13s;line-height:1.45;
+  }
+  .opt:hover:not(:disabled){border-color:#aebbe0;background:#fbfcff}
+  .opt:disabled{cursor:default}
+  .opt .key{
+    flex:0 0 auto;width:27px;height:27px;border-radius:7px;background:#eef1f8;
+    color:var(--muted);font-weight:700;font-family:var(--mono);font-size:.85rem;
+    display:flex;align-items:center;justify-content:center;margin-top:1px;transition:.13s;
+  }
+  .opt.correct{border-color:var(--green);background:var(--green-bg)}
+  .opt.correct .key{background:var(--green);color:#fff}
+  .opt.wrong{border-color:var(--red);background:var(--red-bg)}
+  .opt.wrong .key{background:var(--red);color:#fff}
+  .opt .mark{margin-left:auto;font-weight:700;flex:0 0 auto;align-self:center}
+  .opt.correct .mark{color:var(--green)}
+  .opt.wrong .mark{color:var(--red)}
+
+  .explain{
+    margin-top:18px;border-left:4px solid var(--blue);background:#f7f9ff;
+    border-radius:0 10px 10px 0;padding:14px 16px;font-size:.93rem;
+    animation:rise .25s ease;
+  }
+  .explain.good{border-left-color:var(--green);background:var(--green-bg)}
+  .explain.bad{border-left-color:var(--red);background:#fef6f6}
+  .explain .head{font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:5px}
+  .explain.good .head{color:var(--green)}
+  .explain.bad .head{color:var(--red)}
+  .explain p{margin:0;color:#2b3550}
+  .explain code{font-family:var(--mono);font-size:.86em;background:#eaeef9;padding:1px 6px;border-radius:5px;color:var(--navy-2);word-break:break-word}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .qfoot{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px;flex-wrap:wrap}
+  .kbd-hint{font-size:.78rem;color:var(--muted)}
+  .kbd{font-family:var(--mono);background:#eef1f8;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;font-size:.78em}
+
+  /* ---------- Results ---------- */
+  .result-top{display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+  .ring{position:relative;width:138px;height:138px;flex:0 0 auto}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .num b{font-size:2rem;line-height:1;letter-spacing:-1px}
+  .ring .num span{font-size:.75rem;color:var(--muted)}
+  .result-meta h2{margin:0 0 4px;font-size:1.5rem;letter-spacing:-.4px}
+  .result-meta .note{font-size:1.02rem;color:var(--muted)}
+  .result-meta .note b{color:var(--ink)}
+  .verdict{display:inline-block;margin-top:10px;font-size:.9rem;font-weight:600;padding:6px 14px;border-radius:999px}
+
+  .bytheme{margin-top:26px}
+  .bytheme h3{font-size:.82rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 12px}
+  .trow{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;margin-bottom:11px}
+  .trow .tname{font-size:.92rem;font-weight:600}
+  .trow .tval{font-family:var(--mono);font-size:.84rem;color:var(--muted)}
+  .tbar{grid-column:1/-1;height:6px;background:#e7ebf5;border-radius:999px;overflow:hidden;margin-top:-2px}
+  .tbar > i{display:block;height:100%;border-radius:999px}
+
+  .review{margin-top:8px}
+  .rev-item{border:1px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden}
+  .rev-q{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;cursor:pointer;background:#fff;user-select:none}
+  .rev-q .ico{flex:0 0 auto;width:22px;height:22px;border-radius:50%;color:#fff;font-size:.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .rev-q .ico.ok{background:var(--green)}
+  .rev-q .ico.no{background:var(--red)}
+  .rev-q .rt{flex:1;font-size:.92rem;font-weight:600}
+  .rev-q .rt small{display:block;font-weight:500;color:var(--muted);font-size:.78rem;margin-top:2px}
+  .rev-q .chev{color:var(--muted);transition:.2s}
+  .rev-item.open .chev{transform:rotate(90deg)}
+  .rev-body{display:none;padding:0 15px 15px 48px;font-size:.9rem}
+  .rev-item.open .rev-body{display:block}
+  .rev-body .line{margin:3px 0}
+  .rev-body .ans-correct{color:var(--green);font-weight:600}
+  .rev-body .ans-yours{color:var(--red);font-weight:600}
+  .rev-body .ex{margin-top:8px;color:#2b3550;background:#f7f9ff;border-radius:8px;padding:10px 12px}
+  .rev-body code{font-family:var(--mono);font-size:.86em;background:#eaeef9;padding:1px 5px;border-radius:5px;color:var(--navy-2)}
+
+  .filt-rev{display:flex;gap:8px;margin:6px 0 16px;flex-wrap:wrap}
+
+  footer.tip{margin-top:30px;font-size:.8rem;color:var(--muted);text-align:center}
+
+  @media (max-width:560px){
+    .pad{padding:18px}
+    .qtext{font-size:1.06rem}
+    .ring{width:118px;height:118px}
+  }
+  @media print{
+    body{background:#fff}
+    .noprint{display:none!important}
+    .rev-body{display:block!important}
+    .card{box-shadow:none;border-color:#ccc}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="logo"></div>
+    <div>
+      <h1>Administration Windows Server &amp; Active Directory</h1>
+      <p>QCM auto-correctif — Unité 3 · B1 Valenciennes</p>
+    </div>
+  </header>
+
+  <!-- ====== START ====== -->
+  <section id="start" class="card pad">
+    <p class="lead">Choisis une thématique et un niveau, puis lance le test. Chaque réponse est corrigée et expliquée immédiatement avant de passer à la suivante.</p>
+
+    <div class="field">
+      <label>Thématique</label>
+      <div class="chips" id="themeChips"></div>
+    </div>
+
+    <div class="field">
+      <label>Niveau de questions</label>
+      <div class="seg" id="levelSeg">
+        <button data-level="all" aria-pressed="true">Tout</button>
+        <button data-level="general">Général (concepts)</button>
+        <button data-level="spe">Spécifique (commandes)</button>
+      </div>
+      <div class="hint">« Général » = notions et définitions · « Spécifique » = lecture de commandes PowerShell / cmdlets précises.</div>
+    </div>
+
+    <div class="field">
+      <label>Nombre de questions</label>
+      <div class="seg" id="countSeg">
+        <button data-count="10" aria-pressed="true">10</button>
+        <button data-count="20">20</button>
+        <button data-count="30">30</button>
+        <button data-count="0">Toutes</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Options</label>
+      <div class="seg" id="shuffleSeg">
+        <button data-shuffle="1" aria-pressed="true">Mélanger</button>
+        <button data-shuffle="0">Ordre fixe</button>
+      </div>
+      <div class="hint">Le mélange réordonne aussi les réponses a/b/c/d à chaque tentative.</div>
+    </div>
+
+    <div class="summary" id="summary"></div>
+
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn btn-primary" id="startBtn">Démarrer le QCM</button>
+    </div>
+  </section>
+
+  <!-- ====== QUIZ ====== -->
+  <section id="quiz" class="card pad" style="display:none">
+    <div class="topbar">
+      <div class="qcount">Question <b id="qNow">1</b> / <span id="qTot">10</span></div>
+      <div class="score-pill"><span class="ok" id="liveOk">0</span> bonnes · <span id="liveDone">0</span> traitées</div>
+    </div>
+    <div class="progress"><i id="bar"></i></div>
+
+    <div class="badges">
+      <span class="badge theme" id="bTheme">Thème</span>
+      <span class="badge level" id="bLevel">Niveau</span>
+    </div>
+
+    <p class="qtext" id="qText"></p>
+    <div class="code" id="qCode" style="display:none"></div>
+
+    <div class="options" id="opts"></div>
+    <div id="explainHolder"></div>
+
+    <div class="qfoot">
+      <div class="kbd-hint noprint">Astuce : touches <span class="kbd">1</span>–<span class="kbd">4</span> pour répondre, <span class="kbd">Entrée</span> pour continuer.</div>
+      <button class="btn btn-primary" id="nextBtn" style="display:none">Question suivante →</button>
+    </div>
+  </section>
+
+  <!-- ====== RESULTS ====== -->
+  <section id="results" class="card pad" style="display:none">
+    <div class="result-top">
+      <div class="ring">
+        <svg width="138" height="138" viewBox="0 0 138 138">
+          <circle cx="69" cy="69" r="60" fill="none" stroke="#e7ebf5" stroke-width="13"/>
+          <circle id="ringArc" cx="69" cy="69" r="60" fill="none" stroke="#2d5bff" stroke-width="13" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="377"/>
+        </svg>
+        <div class="num"><b id="rPct">0%</b><span id="rFrac">0/0</span></div>
+      </div>
+      <div class="result-meta">
+        <h2>Bilan du test</h2>
+        <div class="note">Note : <b id="rNote">0</b> / 20</div>
+        <span class="verdict" id="rVerdict"></span>
+      </div>
+    </div>
+
+    <div class="bytheme">
+      <h3>Résultats par thématique</h3>
+      <div id="themeBreak"></div>
+    </div>
+
+    <div class="bytheme">
+      <h3 style="display:flex;justify-content:space-between;align-items:center">
+        <span>Correction détaillée</span>
+      </h3>
+      <div class="filt-rev noprint">
+        <button class="chip" data-rfilt="all" aria-pressed="true">Toutes</button>
+        <button class="chip" data-rfilt="wrong">Mes erreurs</button>
+        <button class="chip" data-rfilt="right">Mes réussites</button>
+      </div>
+      <div class="review" id="review"></div>
+    </div>
+
+    <div class="btn-row noprint" style="margin-top:24px">
+      <button class="btn btn-primary" id="restartBtn">Nouveau test</button>
+      <button class="btn btn-ghost" id="retryWrongBtn">Refaire seulement mes erreurs</button>
+      <button class="btn btn-ghost" id="printBtn">Imprimer le bilan</button>
+    </div>
+  </section>
+
+  <footer class="tip noprint">Fiche d'entraînement — les explications restent consultables dans la correction détaillée.</footer>
+</div>
+
+<script>
+/* =======================================================================
+   BANQUE DE QUESTIONS
+   theme : thématique   |   level : "general" | "spe"
+   correct : index 0..3   |   code : commande affichée (optionnel)
+   ======================================================================= */
+const BANK = [
+{theme:"Utilisateurs & Groupes",level:"general",q:"Quel est l'objectif du paramètre ChangePasswordAtLogon lors de la création d'un nouveau compte utilisateur Active Directory ?",options:["Il génère automatiquement un mot de passe aléatoire à chaque connexion","Il empêche l'utilisateur de modifier son mot de passe après la création","Il oblige l'utilisateur à changer son mot de passe temporaire lors de sa première connexion","Il désactive le compte jusqu'à ce que le service informatique définisse un nouveau mot de passe"],correct:2,explain:"L'admin crée un mot de passe temporaire ; ce drapeau force l'utilisateur à définir le sien dès la première ouverture de session. Avantage : l'administrateur ne connaît jamais le mot de passe définitif."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Que retourne cette commande exécutée sur un contrôleur de domaine ?",code:"Get-ADUser -Filter {Enabled -eq $false} | Select-Object Name, SamAccountName, LastLogonDate",options:["Tous les utilisateurs ne s'étant jamais connectés depuis la création de leur compte","La liste de tous les comptes désactivés avec leur nom, identifiant et date de dernière connexion","Le nombre d'utilisateurs actifs dans le domaine","Tous les comptes verrouillés dans l'ensemble de la forêt"],correct:1,explain:"Le filtre porte sur Enabled -eq $false : on récupère les comptes désactivés. Select-Object ne garde que les colonnes Name, SamAccountName et LastLogonDate. Attention : désactivé ≠ verrouillé (lockout)."},
+{theme:"PowerShell",level:"spe",q:"Que fait la structure try-catch dans ce script et quand est-elle essentielle ?",code:"try {\n    $result = Get-SystemInfo -Computer $ComputerName\n    $result\n}\ncatch {\n    Write-Error \"Error: $_\"\n}",options:["Elle gère les erreurs : le bloc catch s'exécute lorsqu'une exception survient dans le bloc try","Elle exécute le bloc catch en premier pour vérifier les conditions, puis le bloc try","Elle retente automatiquement la commande jusqu'à réussite, sans limite","Elle n'est utile que pour l'exécution de scripts à distance"],correct:0,explain:"Le code « risqué » va dans try ; en cas d'exception, l'exécution saute dans catch au lieu de planter le script. Indispensable pour tout ce qui peut échouer : réseau, accès distant, fichiers."},
+{theme:"Réseau & Planification",level:"spe",q:"Que fait cette commande pour la planification de tâches ?",code:'$trigger = New-ScheduledTaskTrigger -Daily -At "02:00"',options:["Elle retarde l'exécution de 2 heures après le démarrage chaque jour","Elle programme une exécution unique le 2 février seulement","Elle arrête toute tâche encore en cours à 2h du matin","Elle crée un déclencheur qui exécute la tâche tous les jours à 2h du matin"],correct:3,explain:"-Daily -At \"02:00\" définit le « quand » : tous les jours à 2h. Ce n'est que le déclencheur ; il faut le combiner à une action (New-ScheduledTaskAction) puis enregistrer le tout avec Register-ScheduledTask."},
+{theme:"PowerShell",level:"spe",q:"Que fait l'opérateur pipe et que contiendra la sortie ?",code:'Get-Service | Where-Object {$_.Status -eq "Running"}',options:["Il enregistre la sortie dans un fichier texte nommé Where-Object","Le pipe transmet les objets de service à Where-Object qui filtre ceux ayant le statut Running","Il exécute les deux commandes simultanément en parallèle","Il compare les valeurs de retour de Get-Service et Where-Object"],correct:1,explain:"Le pipe | fait circuler les objets renvoyés par Get-Service vers Where-Object, qui ne garde que ceux dont la propriété Status vaut Running. PowerShell passe des objets .NET, pas du texte."},
+{theme:"GPO",level:"spe",q:"Quelle commande force la réapplication immédiate de toutes les stratégies de groupe ?",code:"gpupdate /force",options:["Restart-Service GroupPolicy","gpresult /v","gpedit.msc","gpupdate /force"],correct:3,explain:"gpupdate /force réapplique immédiatement toutes les stratégies (ordinateur + utilisateur), même celles déjà en place. gpresult sert au diagnostic (affichage), pas à l'application."},
+{theme:"Windows Server",level:"general",q:"Quel est l'avantage principal de l'édition Datacenter par rapport à Standard en virtualisation ?",options:["Elle fonctionne sur des processeurs 64 bits","Elle dispose d'une interface graphique","Elle inclut Active Directory","Elle prend en charge un nombre illimité de machines virtuelles sous licence"],correct:3,explain:"Datacenter autorise un nombre illimité de VM Windows sous licence (idéal pour l'hyper-virtualisation). Standard est limitée à 2 VM par licence. Les deux incluent AD et tournent en 64 bits."},
+{theme:"FSMO",level:"general",q:"Quel rôle FSMO gère les changements de mot de passe et la synchronisation horaire au niveau du domaine ?",options:["L'émulateur PDC","Le maître RID","Le maître d'infrastructure","Le maître de schéma"],correct:0,explain:"L'émulateur PDC gère la référence immédiate des changements de mot de passe, la synchronisation de l'heure du domaine, le verrouillage de comptes et la rétrocompatibilité. C'est le rôle FSMO le plus sollicité au quotidien."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Qu'affiche cette cmdlet sur un contrôleur de domaine ?",code:"Get-ADDefaultDomainPasswordPolicy",options:["Une liste des utilisateurs ayant des mots de passe faibles","Uniquement la longueur minimale du mot de passe","Les dates d'expiration individuelles des mots de passe de chaque utilisateur","Les paramètres de la stratégie de mot de passe du domaine : complexité, longueur, historique et verrouillage"],correct:3,explain:"Elle renvoie la politique de mot de passe par défaut du domaine : longueur min, complexité, historique, âge min/max et seuils de verrouillage. Ce n'est pas une liste d'utilisateurs."},
+{theme:"PowerShell",level:"general",q:"Quelle convention de nommage les cmdlets PowerShell suivent-elles ?",options:["Des commandes en un seul mot en minuscules","Le format Nom-Verbe comme Service.Get et ADUser.New","Le format Verbe-Nom tel que Get-Service ou New-ADUser","Des codes abrégés comme gsv pour Get-Service"],correct:2,explain:"Les cmdlets suivent le format Verbe-Nom : Get-Service, New-ADUser, Set-ADUser… Les verbes sont normalisés (Get-Verb les liste). Les codes courts comme gsv ne sont que des alias."},
+{theme:"Utilisateurs & Groupes",level:"general",q:"Qu'est-ce qu'un compte de service et qu'est-ce qui le distingue d'un compte utilisateur standard ?",options:["Il ne peut exister que sur les serveurs membres","C'est un autre nom pour le compte Administrateur par défaut","Il exécute des applications/services sans connexion interactive, avec des permissions ciblées et un mot de passe qui n'expire pas","Il a un accès en lecture seule à tout l'annuaire par défaut"],correct:2,explain:"Un compte de service fait tourner une application ou un service sans ouverture de session interactive. Il a des permissions ciblées et souvent un mot de passe qui n'expire pas (ou un gMSA qui gère le mot de passe automatiquement)."},
+{theme:"DHCP",level:"spe",q:"Que configure cette commande sur un serveur DHCP ?",code:'Set-DhcpServerv4OptionValue -ScopeId "192.168.100.0" -OptionId 6 -Value "192.168.100.10","8.8.8.8"',options:["Elle configure les serveurs de temps NTP de l'étendue","Elle définit la passerelle par défaut de l'étendue","Elle attribue les adresses des serveurs DNS aux clients de l'étendue","Elle lie le serveur DHCP pour écouter sur ces adresses"],correct:2,explain:"L'option DHCP 6 = serveurs DNS. La commande distribue donc 192.168.100.10 et 8.8.8.8 comme DNS aux clients. Repères : option 3 = passerelle, option 6 = DNS, option 15 = suffixe DNS."},
+{theme:"GPO",level:"general",q:"Que se passe-t-il lorsqu'une GPO est configurée comme Appliquée (Enforced) au niveau du domaine ?",options:["Ses paramètres ne peuvent être remplacés par aucune GPO de niveau inférieur, même si une UO bloque l'héritage","Elle ne s'applique qu'à la racine du domaine et ne descend dans aucune UO enfant","Elle remplace complètement toutes les autres GPO du domaine","Elle ne s'applique qu'aux ordinateurs, pas aux utilisateurs"],correct:0,explain:"Une GPO « Appliquée » (Enforced) ne peut être écrasée par aucune GPO inférieure et passe outre le « Bloquer l'héritage » d'une UO. C'est le moyen de garantir l'application d'une politique critique."},
+{theme:"GPO",level:"spe",q:"Que fait cette commande pour la sauvegarde d'une GPO ?",code:'Backup-GPO -Name "GPO_Securite_Stagiaires" -Path "C:\\GPO_Backups"',options:["Elle copie la GPO vers un autre contrôleur de domaine pour la réplication","Elle crée une sauvegarde de la GPO indiquée dans le dossier précisé","Elle crée une GPO en double nommée GPO_Backups","Elle exporte uniquement les paramètres de sécurité sous forme de modèle"],correct:1,explain:"Backup-GPO sauvegarde la GPO (paramètres + métadonnées) dans le dossier cible. On la restaure ensuite avec Restore-GPO. Cela ne duplique pas la GPO et ne réplique pas vers un autre DC."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Que fait cette commande de gestion en masse des utilisateurs AD ?",code:'Get-ADUser -Filter "City -eq \'Paris\'" | Set-ADUser -Office "Paris HQ"',options:["Elle supprime tous les utilisateurs sauf ceux de Paris","Elle crée de nouveaux utilisateurs dans l'UO Paris","Elle déplace tous les utilisateurs de Paris vers une nouvelle UO Paris HQ","Elle recherche les utilisateurs dont la ville est Paris et met à jour leur attribut Office à Paris HQ"],correct:3,explain:"Get-ADUser récupère les utilisateurs dont la ville est Paris, puis le pipe envoie chacun à Set-ADUser qui modifie l'attribut Office. Aucune création, suppression ni déplacement."},
+{theme:"Active Directory",level:"general",q:"Quelle est la fonction principale des services de domaine Active Directory (AD DS) ?",options:["Le routage de la messagerie","Le partage de fichiers uniquement","La protection antivirus","L'authentification centralisée, l'autorisation et les services d'annuaire pour utilisateurs, ordinateurs et ressources"],correct:3,explain:"AD DS est le cœur de la gestion des identités : il centralise l'authentification (qui es-tu ?), l'autorisation (à quoi as-tu droit ?) et l'annuaire des objets du domaine."},
+{theme:"Réseau & Planification",level:"spe",q:"Quelle cmdlet crée l'action d'une tâche planifiée (le programme à exécuter) ?",code:'New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-File C:\\Scripts\\Backup-Daily.ps1"',options:["New-ScheduledTaskAction","Register-ScheduledTask","Set-ScheduledTask","New-TaskAction"],correct:0,explain:"New-ScheduledTaskAction définit l'action (programme + arguments). Register-ScheduledTask enregistre ensuite la tâche en combinant action + déclencheur. New-TaskAction n'existe pas."},
+{theme:"Utilisateurs & Groupes",level:"general",q:"Quelles sont les étendues de groupe, et en quoi Globale diffère-t-elle de Domaine local ?",options:["Les groupes globaux contiennent des membres de leur domaine et s'utilisent dans toute la forêt ; les groupes de domaine local accordent l'accès aux ressources de leur seul domaine","Il n'existe que deux étendues","Les groupes globaux contiennent des membres de n'importe quel domaine, et Domaine local est limité à une UO","Les trois étendues sont identiques, le choix est esthétique"],correct:0,explain:"Globale : membres du domaine local, utilisable partout dans la forêt (souvent pour regrouper des utilisateurs). Domaine local : sert à donner accès aux ressources d'un seul domaine. La 3ᵉ étendue est Universelle."},
+{theme:"Utilisateurs & Groupes",level:"general",q:"Quelle est la différence entre un groupe de sécurité et un groupe de distribution ?",options:["Les groupes de sécurité ont un SID et servent dans les ACL pour les permissions ; les groupes de distribution servent seulement à la diffusion de courriels","Il n'y a aucune différence fonctionnelle","Les groupes de distribution offrent plus de fonctionnalités de sécurité","Les groupes de sécurité sont réservés aux ordinateurs, les groupes de distribution aux utilisateurs"],correct:0,explain:"Un groupe de sécurité possède un SID et peut figurer dans une ACL pour attribuer des droits. Un groupe de distribution n'a pas de SID exploitable pour la sécurité : il sert aux listes de diffusion (mail)."},
+{theme:"FSMO",level:"spe",q:"Quelle cmdlet permet de vérifier quels rôles FSMO sont détenus par chaque contrôleur de domaine ?",code:"Get-ADDomainController -Filter * | Select-Object Name, OperationMasterRoles",options:["Get-ADForest","Get-ADDomainController","Test-ADDomainController","Get-FSMORoleOwner"],correct:1,explain:"Get-ADDomainController -Filter * | Select Name, OperationMasterRoles liste chaque DC et les rôles FSMO qu'il détient. Get-FSMORoleOwner n'existe pas (l'équivalent en ligne de commande classique est netdom query fsmo)."},
+{theme:"PowerShell",level:"general",q:"Que définit le bloc param au début d'un script et comment ses valeurs sont-elles fournies ?",code:'param(\n    [string]$ComputerName = "localhost",\n    [switch]$Verbose\n)',options:["Il importe automatiquement les modules requis","Il liste les variables d'environnement modifiées par le script","Il déclare des paramètres nommés que l'on peut passer au script lors de son exécution","Il configure la gestion des erreurs des fonctions du script"],correct:2,explain:"param() déclare les paramètres nommés du script (types et valeurs par défaut). On les fournit à l'appel : .\\script.ps1 -ComputerName \"PC01\" -Verbose."},
+{theme:"FSMO",level:"general",q:"Parmi les cinq rôles FSMO, lequel gère les modifications du schéma à l'échelle de la forêt ?",options:["Le maître RID","Le maître d'attribution de noms de domaine","L'émulateur PDC","Le maître de schéma"],correct:3,explain:"Le maître de schéma (Schema Master) est unique dans toute la forêt et gère toute modification du schéma AD. À ne pas confondre avec le maître d'attribution de noms de domaine, qui gère l'ajout/suppression de domaines."},
+{theme:"Active Directory",level:"general",q:"Sur quels protocoles Active Directory s'appuie-t-il pour l'authentification et l'accès à l'annuaire ?",options:["FTP et SMTP","Kerberos pour l'authentification et LDAP pour l'accès à l'annuaire","HTTP uniquement","SSH et TLS exclusivement"],correct:1,explain:"Kerberos gère l'authentification par tickets ; LDAP sert à interroger et modifier l'annuaire. (DNS est aussi indispensable pour localiser les services, mais les deux protocoles cœur sont Kerberos + LDAP.)"},
+{theme:"GPO",level:"general",q:"Quelles sont les deux sections principales que contient chaque objet de stratégie de groupe ?",options:["Réseau et Stockage","Configuration de sécurité et Configuration d'application","Configuration ordinateur et Configuration utilisateur","Matériel et Logiciel"],correct:2,explain:"Chaque GPO contient une Configuration ordinateur (appliquée à la machine au démarrage) et une Configuration utilisateur (appliquée à l'ouverture de session). On peut désactiver l'une des deux pour accélérer le traitement."},
+{theme:"DNS",level:"general",q:"Quel type d'enregistrement DNS associe un nom d'hôte à une adresse IPv4 dans une zone de recherche directe ?",options:["Enregistrement MX","Enregistrement AAAA","Enregistrement PTR","Enregistrement A"],correct:3,explain:"L'enregistrement A relie un nom d'hôte à une IPv4. Repères : AAAA = IPv6, PTR = recherche inversée (IP → nom), MX = serveurs de messagerie."},
+{theme:"Windows Server",level:"spe",q:"Que fait cette commande sur un Windows Server fraîchement installé ?",code:'Rename-Computer -NewName "SRV-DC01" -Restart',options:["Elle crée une nouvelle machine virtuelle nommée SRV-DC01","Elle renomme l'ordinateur en SRV-DC01 et le redémarre pour appliquer le changement","Elle modifie le nom de domaine DNS du serveur","Elle ajoute un enregistrement alias DNS"],correct:1,explain:"Rename-Computer change le nom de la machine ; -Restart redémarre pour appliquer. C'est une étape classique avant de promouvoir un serveur en contrôleur de domaine."},
+{theme:"PowerShell",level:"spe",q:"Que fait Import-Module ActiveDirectory et quand l'exécuter ?",code:"Import-Module ActiveDirectory",options:["Elle charge le module PowerShell Active Directory et rend disponibles les cmdlets comme Get-ADUser","Elle installe le rôle AD DS sur le serveur de zéro","Elle se connecte à un serveur AD distant via le réseau","Elle crée une sauvegarde de la base de données AD"],correct:0,explain:"Import-Module ActiveDirectory charge le module et rend utilisables les cmdlets *-AD* (Get-ADUser, New-ADUser…). Cela n'installe pas le rôle : l'installation du rôle se fait avec Install-WindowsFeature."},
+{theme:"Active Directory",level:"spe",q:"Que fait cette commande sur un serveur avec AD DS installé ?",code:'Install-ADDSForest -DomainName "formation.local" -DomainNetbiosName "FORMATION" -InstallDNS:$true -Force:$true',options:["Elle promeut le serveur en premier contrôleur de domaine et crée une nouvelle forêt avec le domaine formation.local","Elle joint le serveur à un domaine existant","Elle installe le rôle AD DS sans promouvoir le serveur","Elle crée un domaine enfant sous formation.local"],correct:0,explain:"Install-ADDSForest promeut le serveur en premier DC et crée une toute nouvelle forêt (domaine formation.local), en installant le DNS au passage. C'est la naissance d'un nouvel annuaire."},
+{theme:"GPO",level:"general",q:"Quel est l'ordre correct d'application des GPO, du premier au dernier appliqué ?",options:["Toutes les GPO sont appliquées simultanément, sans priorité","Domaine, Site, Unité d'organisation, puis Local","Unité d'organisation, Domaine, Site, Local","Local, Site, Domaine, puis Unité d'organisation"],correct:3,explain:"Ordre L-S-D-OU : Local → Site → Domaine → Unité d'organisation. La dernière appliquée (l'UO la plus proche de l'objet) l'emporte en cas de conflit, sauf si une GPO supérieure est « Appliquée »."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Que fait cette commande sur Active Directory ?",code:'New-ADUser -Name "Jean Dupont" -SamAccountName "j.dupont" -UserPrincipalName "j.dupont@formation.local" -Path "OU=Formateurs,OU=Utilisateurs,DC=formation,DC=local" -AccountPassword (ConvertTo-SecureString "P@ssw0rd123!" -AsPlainText -Force) -Enabled $true',options:["Elle modifie le mot de passe d'un utilisateur existant","Elle crée un nouvel utilisateur AD nommé Jean Dupont avec les identifiants spécifiés et active le compte","Elle importe des utilisateurs depuis un fichier CSV","Elle déplace un utilisateur vers une nouvelle UO"],correct:1,explain:"New-ADUser crée le compte (Jean Dupont) avec son SamAccountName, son UPN, l'UO de destination (-Path), un mot de passe sécurisé, et -Enabled $true pour l'activer immédiatement."},
+{theme:"DNS",level:"spe",q:"Quelle cmdlet crée un enregistrement DNS de type A (nom d'hôte → IPv4) sur un serveur DNS Windows ?",options:["Add-DnsServerZone","New-DnsRecord -Type A","Set-DnsServerResourceRecord","Add-DnsServerResourceRecordA"],correct:3,explain:"Add-DnsServerResourceRecordA crée un enregistrement A. New-DnsRecord n'existe pas ; Add-DnsServerZone crée une zone (pas un enregistrement) ; Set-DnsServerResourceRecord modifie un enregistrement existant."},
+{theme:"GPO",level:"general",q:"Quel est l'objectif principal des objets de stratégie de groupe (GPO) ?",options:["Centraliser et standardiser la configuration des ordinateurs et des utilisateurs à travers le domaine","Créer automatiquement des comptes utilisateur quand des ordinateurs rejoignent le domaine","Surveiller le trafic réseau","Remplacer le DNS"],correct:0,explain:"Les GPO permettent d'appliquer, depuis un point unique, des paramètres standardisés (sécurité, restrictions, déploiements de logiciels…) à des milliers de machines et d'utilisateurs."},
+{theme:"GPO",level:"general",q:"Quel est l'objectif du filtrage WMI dans les stratégies de groupe ?",options:["Il bloque toutes les requêtes WMI sur les ordinateurs cibles","Il filtre quels administrateurs peuvent modifier la GPO dans la console GPMC","Il applique une GPO de façon conditionnelle selon des attributs système (version d'OS, matériel, espace disque…)","Il filtre les GPO selon les plages d'adresses IP des clients"],correct:2,explain:"Un filtre WMI conditionne l'application d'une GPO à des critères système : par exemple n'appliquer une politique qu'aux postes Windows 11, ou à ceux disposant d'au moins X Go d'espace disque."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Quelle cmdlet réinitialise le mot de passe d'un compte utilisateur AD ?",code:'Set-ADAccountPassword -Identity j.dupont -NewPassword (ConvertTo-SecureString "NouveauPass2024!" -AsPlainText -Force) -Reset',options:["Set-ADUser -Password","Reset-ADUserPassword","Set-ADAccountPassword","New-ADAccountPassword"],correct:2,explain:"Set-ADAccountPassword avec -Reset réinitialise le mot de passe sans connaître l'ancien (action d'administrateur). Set-ADUser -Password et Reset-ADUserPassword n'existent pas."},
+{theme:"Windows Server",level:"spe",q:"Quelle cmdlet installe un rôle serveur tel que DNS ou DHCP ?",code:"Install-WindowsFeature -Name DNS -IncludeManagementTools",options:["Add-WindowsRole","Install-WindowsFeature","Enable-ServerRole","Set-WindowsFeature"],correct:1,explain:"Install-WindowsFeature installe un rôle/une fonctionnalité (DNS, DHCP, AD DS…) ; -IncludeManagementTools ajoute les outils d'administration. Add-WindowsRole n'existe pas."},
+{theme:"PowerShell",level:"spe",q:"Quelle stratégie d'exécution autorise les scripts locaux mais exige une signature pour les scripts téléchargés ?",code:"Set-ExecutionPolicy RemoteSigned -Scope CurrentUser",options:["Unrestricted","AllSigned","RemoteSigned","Restricted"],correct:2,explain:"RemoteSigned : scripts locaux autorisés, scripts venant d'Internet exigeant une signature numérique. C'est le bon compromis. Restricted bloque tout ; Unrestricted n'est pas recommandé ; AllSigned exige une signature même en local."},
+{theme:"Active Directory",level:"general",q:"Quel est le rôle des unités d'organisation (UO) et en quoi diffèrent-elles des groupes de sécurité ?",options:["Les UO attribuent les permissions sur les fichiers, les groupes organisent l'annuaire","Elles sont identiques","Les UO sont des conteneurs qui organisent les objets et permettent de déléguer l'administration ; les groupes de sécurité contrôlent l'accès aux ressources","Les UO n'existent que dans les forêts multi-domaines"],correct:2,explain:"Une UO range les objets, sert de cible aux GPO et permet de déléguer des droits d'administration. Un groupe de sécurité, lui, sert à donner ou refuser des accès. Rôles différents et complémentaires."},
+{theme:"Windows Server",level:"general",q:"Quelles sont les deux principales options d'installation de Windows Server 2022 ?",options:["Standard et Premium","Professionnel et Entreprise","Desktop Experience (interface graphique complète) et Server Core (installation minimale en ligne de commande)","Basique et Avancée"],correct:2,explain:"Desktop Experience fournit l'interface graphique complète ; Server Core est une installation minimale, pilotée en ligne de commande, plus légère et avec une surface d'attaque réduite. (Standard/Datacenter sont des éditions, pas des modes d'installation.)"},
+{theme:"DHCP",level:"general",q:"Quelle est la séquence correcte des quatre étapes de négociation DHCP ?",options:["Request, Discover, Acknowledge, Offer","Discover, Offer, Request, Acknowledge","Offer, Discover, Acknowledge, Request","Acknowledge, Request, Offer, Discover"],correct:1,explain:"Le processus suit DORA : Discover (le client cherche un serveur), Offer (le serveur propose une IP), Request (le client demande cette IP), Acknowledge (le serveur confirme le bail)."},
+{theme:"DHCP",level:"general",q:"Quel est l'objectif d'une réservation DHCP et en quoi diffère-t-elle d'une IP statique ?",options:["Il n'y a aucune différence pratique","Elle bloque l'IP pour qu'elle ne soit attribuée à personne","Elle garantit toujours la même IP à un client (via son adresse MAC) tout en conservant la configuration centralisée sur le serveur","Elle attribue des IP temporaires qui expirent plus vite"],correct:2,explain:"Une réservation lie une IP fixe à une adresse MAC : le client reçoit toujours la même adresse, mais la gestion reste centralisée sur le serveur DHCP. Une IP statique, elle, se configure manuellement sur chaque poste."},
+{theme:"PowerShell",level:"general",q:"Comment déclare-t-on et utilise-t-on une variable de type chaîne en PowerShell ?",code:'$name = "John Doe"\n$age = 25\n$services = Get-Service',options:["Avec le mot-clé var, comme var name = \"John Doe\"","Avec le préfixe $, comme $name = \"John Doe\"","Avec Set name = \"John Doe\"","Avec la syntaxe %name%"],correct:1,explain:"En PowerShell, toute variable commence par $ : $name = \"John Doe\". Pas de mot-clé var (JavaScript) ni de syntaxe %name% (qui appartient à CMD)."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Que fait cette commande de gestion des groupes AD ?",code:'Add-ADGroupMember -Identity "Formateurs" -Members m.martin',options:["Elle supprime m.martin du groupe Formateurs","Elle crée un nouveau groupe Formateurs avec m.martin comme seul membre","Elle ajoute l'utilisateur m.martin au groupe Formateurs","Elle renomme le groupe d'après le nom du membre"],correct:2,explain:"Add-ADGroupMember ajoute un membre à un groupe existant. Pour retirer un membre, on utilise Remove-ADGroupMember."},
+{theme:"DHCP",level:"general",q:"Quel numéro d'option DHCP distribue l'adresse de la passerelle par défaut aux clients ?",options:["Option 3","Option 6","Option 1","Option 15"],correct:0,explain:"Option 3 = passerelle par défaut (Router). À retenir : option 1 = masque de sous-réseau, option 6 = DNS, option 15 = suffixe DNS."},
+{theme:"PowerShell",level:"general",q:"Quelle caractéristique principale distingue PowerShell de CMD ?",options:["CMD prend en charge les scripts mais PowerShell se limite aux commandes unitaires","PowerShell ne fonctionne que sur Windows Server, CMD sur tout Windows","PowerShell est plus lent car il utilise une interface graphique en interne","PowerShell manipule des objets .NET dans le pipeline au lieu de simples chaînes de texte"],correct:3,explain:"La grande différence : PowerShell fait circuler des objets .NET (avec propriétés et méthodes) dans le pipeline, là où CMD ne manipule que du texte. Cela rend le filtrage, le tri et le traitement bien plus puissants."},
+{theme:"DNS",level:"general",q:"Quel type d'enregistrement DNS crée un alias pointant un nom de domaine vers un autre nom de domaine ?",options:["PTR","Enregistrement A pointant vers la même IP","SRV","CNAME"],correct:3,explain:"Un CNAME crée un alias d'un nom vers un autre nom (ex. www → serveur1.formation.local). Repères : PTR = recherche inversée, SRV = localisation de services, A = nom → IPv4."},
+{theme:"Windows Server",level:"general",q:"Quelle édition de Windows Server 2022 cible les petites entreprises (jusqu'à 25 utilisateurs) ?",options:["Standard avec restrictions de CAL","Essentials","Datacenter","Foundation"],correct:1,explain:"L'édition Essentials vise les petites structures (≈ 25 utilisateurs / 50 appareils) sans CAL. Standard et Datacenter ciblent des environnements plus grands."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Que fait cette commande de gestion des groupes AD ?",code:'New-ADGroup -Name "GRP_Developpeurs" -GroupScope Global -GroupCategory Security',options:["Elle crée un groupe de distribution pour les développeurs","Elle crée un nouveau groupe de sécurité d'étendue Globale nommé GRP_Developpeurs","Elle renomme un groupe existant et change son étendue en Globale","Elle ajoute automatiquement tous les utilisateurs ayant « Developer » dans leur titre"],correct:1,explain:"New-ADGroup avec -GroupScope Global et -GroupCategory Security crée un groupe de sécurité (utilisable dans les permissions) d'étendue Globale. Le groupe est vide à la création."},
+{theme:"Windows Server",level:"general",q:"Quelle est la quantité minimale de RAM requise pour installer Windows Server 2022 ?",options:["1 Go","4 Go","2 Go","512 Mo"],correct:2,explain:"Réponse attendue par le cours : 2 Go, le minimum pratique pour une installation avec interface graphique (Desktop Experience). À savoir : la fiche officielle Microsoft indique 512 Mo comme minimum absolu pour Server Core, et 2 Go avec Desktop Experience."},
+{theme:"GPO",level:"general",q:"Quelle est la différence entre le filtrage de sécurité des GPO et le blocage de l'héritage ?",options:["Le blocage s'applique par utilisateur, le filtrage par UO uniquement","Ce sont des fonctionnalités identiques sous des noms différents","Le filtrage de sécurité détermine quels utilisateurs/ordinateurs reçoivent une GPO ; le blocage de l'héritage empêche les GPO parentes de s'appliquer à une UO enfant","Le filtrage exige PowerShell, le blocage la console graphique"],correct:2,explain:"Deux mécanismes distincts : le filtrage de sécurité cible précisément qui reçoit une GPO (via la permission « Appliquer la stratégie de groupe ») ; le blocage de l'héritage coupe la descente des GPO parentes vers une UO enfant."},
+{theme:"GPO",level:"spe",q:"Quelle cmdlet lie une GPO existante à une unité d'organisation ?",code:'New-GPLink -Name "GPO_Securite_Stagiaires" -Target "OU=Stagiaires,OU=Utilisateurs,DC=formation,DC=local"',options:["Set-GPOLink","New-GPLink","Add-GPLink","Link-GPO"],correct:1,explain:"New-GPLink lie une GPO existante à une cible (UO, site ou domaine). Add-GPLink et Link-GPO n'existent pas. À distinguer de New-GPO, qui crée la GPO sans la lier."},
+{theme:"GPO",level:"general",q:"Quel est le rôle du magasin central (Central Store) en lien avec les GPO ?",options:["Il stocke les modèles ADMX de façon centralisée dans SYSVOL pour que tous les admins utilisent les mêmes modèles","C'est la base de tous les paramètres de GPO stockée sur chaque DC","Il centralise les profils utilisateur","Il remplace le besoin de contrôleurs de domaine"],correct:0,explain:"Le Central Store stocke les modèles d'administration ADMX/ADML dans SYSVOL. Tous les administrateurs éditent alors les GPO avec exactement les mêmes modèles, partout dans le domaine."},
+{theme:"Active Directory",level:"general",q:"Quel est le conteneur de plus haut niveau de la structure logique d'AD, qui constitue la frontière de sécurité ultime ?",options:["La forêt","Le domaine","L'unité d'organisation","L'arborescence"],correct:0,explain:"La forêt est le conteneur de plus haut niveau et la véritable frontière de sécurité d'AD (un seul schéma, approbations internes implicites). Le domaine est une frontière administrative et de réplication, mais pas la frontière de sécurité ultime."},
+{theme:"DNS",level:"spe",q:"Que fait cette commande sur un serveur DNS Windows ?",code:'Add-DnsServerPrimaryZone -Name "formation.local" -ZoneFile "formation.local.dns"',options:["Elle crée une nouvelle zone DNS principale nommée formation.local","Elle ajoute un enregistrement à une zone existante","Elle configure la redirection DNS vers formation.local","Elle convertit une zone secondaire en zone principale"],correct:0,explain:"Add-DnsServerPrimaryZone crée une nouvelle zone DNS principale avec son fichier de zone. Cela ne crée pas un enregistrement et ne transforme pas une zone existante."},
+{theme:"GPO",level:"spe",q:"Que fait cette commande de gestion des GPO ?",code:'New-GPO -Name "GPO_Securite_Stagiaires" -Comment "Security policies for trainees"',options:["Elle applique immédiatement des restrictions à tous les comptes stagiaires","Elle lie une GPO existante à une UO Stagiaires","Elle modifie la stratégie de domaine par défaut","Elle crée une nouvelle GPO nommée GPO_Securite_Stagiaires"],correct:3,explain:"New-GPO crée une nouvelle GPO (vide) avec un commentaire. Elle n'est ni liée ni appliquée : il faut ensuite New-GPLink pour la rattacher à une UO."},
+{theme:"PowerShell",level:"general",q:"Quel est le rôle de la variable $_ dans un bloc utilisé avec Where-Object ou ForEach-Object ?",options:["Elle stocke le nombre total d'objets traités par le pipeline","Elle représente l'objet en cours de traitement dans le pipeline","C'est la variable d'erreur","Elle fait référence au résultat de la commande précédente"],correct:1,explain:"$_ (ou $PSItem) désigne l'objet courant traité dans le pipeline. Exemple : $_.Status accède à la propriété Status de l'objet en cours d'examen."},
+{theme:"Utilisateurs & Groupes",level:"general",q:"Quels sont les quatre types de comptes utilisateur pouvant exister dans AD selon leur finalité ?",options:["Utilisateur standard, administrateur, compte de service et invité","Comptes root, admin, opérateur et visualiseur","Domaine et local uniquement","Comptes en lecture, écriture, exécution et contrôle total"],correct:0,explain:"On distingue selon l'usage : utilisateur standard, administrateur (privilèges élevés), compte de service (applications/services) et invité (accès temporaire restreint)."},
+{theme:"Active Directory",level:"general",q:"Quel est le rôle de l'attribut sAMAccountName pour un compte utilisateur AD ?",options:["Il stocke l'adresse de messagerie pour l'intégration Exchange","Il sert d'identifiant de connexion unique, hérité de la compatibilité antérieure à Windows 2000","Il définit le mot de passe de l'utilisateur","Il définit l'appartenance aux groupes"],correct:1,explain:"Le sAMAccountName est l'identifiant de connexion court et unique (format DOMAINE\\login), hérité d'avant Windows 2000. À distinguer de l'UPN, qui a la forme login@domaine."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Quelle cmdlet récupère tous les groupes auxquels un utilisateur AD appartient ?",code:"Get-ADPrincipalGroupMembership m.martin | Select-Object Name",options:["Get-ADPrincipalGroupMembership","Get-ADGroupMember","Get-ADUser -Groups","Find-ADUserGroups"],correct:0,explain:"Get-ADPrincipalGroupMembership liste les groupes d'un utilisateur. Attention au piège : Get-ADGroupMember fait l'inverse, il liste les membres d'un groupe."},
+{theme:"Réseau & Planification",level:"spe",q:"Lors de la configuration d'une IP statique, quel paramètre indique la longueur du préfixe de sous-réseau ?",code:'New-NetIPAddress -InterfaceAlias "Ethernet" -IPAddress "192.168.1.100" -PrefixLength 24 -DefaultGateway "192.168.1.1"',options:["MaskBits","SubnetMask (ex. 255.255.255.0)","NetworkMask","PrefixLength"],correct:3,explain:"-PrefixLength indique la longueur du préfixe (24 = /24 = 255.255.255.0). New-NetIPAddress n'utilise pas SubnetMask, MaskBits ni NetworkMask."},
+{theme:"Utilisateurs & Groupes",level:"spe",q:"Quelle cmdlet déverrouille un compte AD verrouillé après des échecs de connexion ?",code:"Unlock-ADAccount -Identity j.dupont",options:["Set-ADUser -Unlock","Enable-ADAccount","Unlock-ADAccount","Reset-ADAccountLockout"],correct:2,explain:"Unlock-ADAccount déverrouille un compte bloqué par trop d'échecs. Ne pas confondre avec Enable-ADAccount, qui réactive un compte désactivé (verrouillage ≠ désactivation)."}
+];
+
+/* =======================================================================
+   LOGIQUE
+   ======================================================================= */
+const THEMES = [...new Set(BANK.map(q=>q.theme))];
+const el = id => document.getElementById(id);
+
+// Sélections de l'écran de départ
+let sel = { themes:new Set(["__all__"]), level:"all", count:10, shuffle:true };
+
+// ---- Construire les chips de thème ----
+const themeChips = el('themeChips');
+function chip(label, value, count){
+  const b=document.createElement('button');
+  b.className='chip'; b.dataset.theme=value;
+  b.innerHTML = label + (count!=null?` <span class="count">${count}</span>`:'');
+  b.setAttribute('aria-pressed', value==='__all__' ? 'true':'false');
+  return b;
+}
+themeChips.appendChild(chip('Tout','__all__', BANK.length));
+THEMES.forEach(t=>themeChips.appendChild(chip(t,t,BANK.filter(q=>q.theme===t).length)));
+
+themeChips.addEventListener('click', e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  const v=b.dataset.theme;
+  if(v==='__all__'){
+    sel.themes=new Set(['__all__']);
+  }else{
+    sel.themes.delete('__all__');
+    if(sel.themes.has(v)) sel.themes.delete(v); else sel.themes.add(v);
+    if(sel.themes.size===0) sel.themes.add('__all__');
+  }
+  [...themeChips.children].forEach(c=>{
+    c.setAttribute('aria-pressed', sel.themes.has(c.dataset.theme)?'true':'false');
+  });
+  updateSummary();
+});
+
+// ---- Segments (niveau / nombre / mélange) ----
+function bindSeg(segId, key, cast){
+  const seg=el(segId);
+  seg.addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...seg.children].forEach(c=>c.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true');
+    sel[key]=cast(b.dataset[key]);
+    updateSummary();
+  });
+}
+bindSeg('levelSeg','level',v=>v);
+bindSeg('countSeg','count',v=>parseInt(v,10));
+bindSeg('shuffleSeg','shuffle',v=>v==='1');
+
+// ---- Pool de questions selon la sélection ----
+function buildPool(){
+  let pool = BANK.filter(q=>{
+    const okTheme = sel.themes.has('__all__') || sel.themes.has(q.theme);
+    const okLevel = sel.level==='all' || q.level===sel.level;
+    return okTheme && okLevel;
+  });
+  if(sel.shuffle) pool=shuffle(pool);
+  const n = sel.count===0 ? pool.length : Math.min(sel.count, pool.length);
+  return pool.slice(0,n);
+}
+function updateSummary(){
+  const avail = BANK.filter(q=>{
+    const okTheme = sel.themes.has('__all__') || sel.themes.has(q.theme);
+    const okLevel = sel.level==='all' || q.level===sel.level;
+    return okTheme && okLevel;
+  }).length;
+  const n = sel.count===0 ? avail : Math.min(sel.count, avail);
+  const themeLbl = sel.themes.has('__all__') ? 'toutes thématiques' : [...sel.themes].join(', ');
+  const lvlLbl = {all:'tous niveaux', general:'général', spe:'spécifique'}[sel.level];
+  el('summary').innerHTML = avail===0
+    ? `Aucune question ne correspond à ces filtres. Élargis ta sélection.`
+    : `Test prévu : <b>${n} question${n>1?'s':''}</b> · ${themeLbl} · ${lvlLbl} · ${avail} dispo.`;
+  el('startBtn').disabled = avail===0;
+}
+updateSummary();
+
+// ---- Utilitaires ----
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function escapeHTML(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+// Coloration légère "console" du code PowerShell
+function highlight(code){
+  let h = escapeHTML(code);
+  h = h.replace(/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|"[^"]*"|'[^']*')/g,'<span class="tok-str">$1</span>');
+  h = h.replace(/(\$[A-Za-z_][\w]*)/g,'<span class="tok-var">$1</span>');
+  h = h.replace(/(^|\n)([A-Za-z]+-[A-Za-z]+|gpupdate|gpresult|gpedit\.msc)/g,'$1<span class="tok-cmd">$2</span>');
+  h = h.replace(/(\s)(-[A-Za-z]+)(?=\s|:)/g,'$1<span class="tok-par">$2</span>');
+  return h;
+}
+
+// =======================================================================
+//  DÉROULEMENT DU QUIZ
+// =======================================================================
+let game = null;
+
+function startQuiz(pool){
+  game = {
+    questions: pool.map(q=>{
+      // mélange éventuel des réponses en conservant l'index correct
+      let opts = q.options.map((t,i)=>({t, ok:i===q.correct}));
+      if(sel.shuffle) opts=shuffle(opts);
+      return {...q, shown:opts, answered:false, chosen:null, correctIdx:opts.findIndex(o=>o.ok)};
+    }),
+    idx:0, ok:0, done:0
+  };
+  el('start').style.display='none';
+  el('results').style.display='none';
+  el('quiz').style.display='block';
+  el('qTot').textContent=game.questions.length;
+  renderQuestion();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function renderQuestion(){
+  const q=game.questions[game.idx];
+  el('qNow').textContent=game.idx+1;
+  el('bar').style.width = (game.idx/game.questions.length*100)+'%';
+  el('liveOk').textContent=game.ok;
+  el('liveDone').textContent=game.done;
+
+  el('bTheme').textContent=q.theme;
+  const lvl=el('bLevel');
+  lvl.textContent = q.level==='spe' ? 'Spécifique' : 'Général';
+  lvl.className = 'badge level' + (q.level==='spe'?' spe':'');
+
+  el('qText').textContent=q.q;
+  const codeBox=el('qCode');
+  if(q.code){ codeBox.style.display='block'; codeBox.innerHTML='<span class="prompt">PS&gt; </span>'+highlight(q.code); }
+  else codeBox.style.display='none';
+
+  const opts=el('opts'); opts.innerHTML='';
+  const keys=['A','B','C','D'];
+  q.shown.forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='opt'; b.dataset.i=i;
+    b.innerHTML=`<span class="key">${keys[i]}</span><span class="txt">${escapeHTML(o.t)}</span>`;
+    b.addEventListener('click',()=>choose(i));
+    opts.appendChild(b);
+  });
+  el('explainHolder').innerHTML='';
+  el('nextBtn').style.display='none';
+  el('nextBtn').textContent = (game.idx===game.questions.length-1) ? 'Voir le bilan →' : 'Question suivante →';
+}
+
+function choose(i){
+  const q=game.questions[game.idx];
+  if(q.answered) return;
+  q.answered=true; q.chosen=i;
+  const right = q.shown[i].ok;
+  if(right) game.ok++;
+  game.done++;
+
+  const optBtns=[...el('opts').children];
+  optBtns.forEach((b,bi)=>{
+    b.disabled=true;
+    if(q.shown[bi].ok){ b.classList.add('correct'); b.insertAdjacentHTML('beforeend','<span class="mark">✓</span>'); }
+    else if(bi===i){ b.classList.add('wrong'); b.insertAdjacentHTML('beforeend','<span class="mark">✗</span>'); }
+  });
+
+  const exDiv=document.createElement('div');
+  exDiv.className='explain '+(right?'good':'bad');
+  const head = right ? '✓ Bonne réponse'
+                     : '✗ Réponse incorrecte — la bonne réponse était '+['A','B','C','D'][q.correctIdx];
+  exDiv.innerHTML=`<div class="head">${head}</div><p>${fmtExplain(q.explain)}</p>`;
+  el('explainHolder').appendChild(exDiv);
+
+  el('liveOk').textContent=game.ok;
+  el('liveDone').textContent=game.done;
+  el('bar').style.width = (game.done/game.questions.length*100)+'%';
+  el('nextBtn').style.display='inline-block';
+  el('nextBtn').focus();
+}
+
+// met les commandes/cmdlets en <code> dans les explications
+function fmtExplain(s){
+  let h=escapeHTML(s);
+  h=h.replace(/((?:[A-Za-z]+-[A-Za-z]+(?:-[A-Za-z]+)?)|gpupdate \/force|\$_|\$PSItem|\bRemoteSigned\b|\bSYSVOL\b|\bDORA\b|\bUPN\b|\bSID\b|netdom query fsmo)/g,'<code>$1</code>');
+  return h;
+}
+
+function nextQuestion(){
+  if(game.idx<game.questions.length-1){ game.idx++; renderQuestion(); window.scrollTo({top:0,behavior:'smooth'}); }
+  else showResults();
+}
+el('nextBtn').addEventListener('click',nextQuestion);
+el('startBtn').addEventListener('click',()=>{ const p=buildPool(); if(p.length) startQuiz(p); });
+
+// Navigation clavier
+document.addEventListener('keydown',e=>{
+  if(el('quiz').style.display==='none') return;
+  const q=game.questions[game.idx];
+  if(!q.answered && ['1','2','3','4'].includes(e.key)){
+    const i=+e.key-1; if(i<q.shown.length) choose(i);
+  } else if(q.answered && (e.key==='Enter'||e.key===' ')){
+    e.preventDefault(); nextQuestion();
+  }
+});
+
+// =======================================================================
+//  RÉSULTATS
+// =======================================================================
+function showResults(){
+  el('quiz').style.display='none';
+  el('results').style.display='block';
+  const tot=game.questions.length, ok=game.ok;
+  const pct=Math.round(ok/tot*100);
+  const note=Math.round(ok/tot*20*10)/10;
+
+  el('rPct').textContent=pct+'%';
+  el('rFrac').textContent=ok+'/'+tot;
+  el('rNote').textContent=note.toString().replace('.',',');
+
+  // anneau
+  const circ=377, arc=el('ringArc');
+  arc.style.strokeDashoffset = circ - circ*pct/100;
+  const col = pct>=70?'#16a34a':pct>=50?'#b7791f':'#dc2626';
+  arc.style.stroke=col;
+
+  const verd=el('rVerdict');
+  let txt, bg, fg;
+  if(pct>=85){txt='Excellent — maîtrise solide';bg='#e8f9ee';fg='#16a34a';}
+  else if(pct>=70){txt='Bien — quelques points à revoir';bg='#e8f9ee';fg='#16a34a';}
+  else if(pct>=50){txt='Passable — reprends les explications';bg='#fdf3e0';fg='#b7791f';}
+  else {txt='À retravailler — relis le cours';bg='#fdeaea';fg='#dc2626';}
+  verd.textContent=txt; verd.style.background=bg; verd.style.color=fg;
+
+  // par thème
+  const stats={};
+  game.questions.forEach(q=>{
+    stats[q.theme]??={ok:0,n:0};
+    stats[q.theme].n++;
+    if(q.shown[q.chosen]?.ok) stats[q.theme].ok++;
+  });
+  const tb=el('themeBreak'); tb.innerHTML='';
+  Object.entries(stats).sort((a,b)=>(a[1].ok/a[1].n)-(b[1].ok/b[1].n)).forEach(([t,s])=>{
+    const p=Math.round(s.ok/s.n*100);
+    const c=p>=70?'#16a34a':p>=50?'#b7791f':'#dc2626';
+    const row=document.createElement('div'); row.className='trow';
+    row.innerHTML=`<div class="tname">${t}</div><div class="tval">${s.ok}/${s.n} · ${p}%</div>
+      <div class="tbar"><i style="width:${p}%;background:${c}"></i></div>`;
+    tb.appendChild(row);
+  });
+
+  buildReview('all');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function buildReview(filter){
+  const rev=el('review'); rev.innerHTML='';
+  const keys=['A','B','C','D'];
+  game.questions.forEach((q,qi)=>{
+    const right=q.shown[q.chosen]?.ok;
+    if(filter==='wrong'&&right) return;
+    if(filter==='right'&&!right) return;
+
+    const item=document.createElement('div'); item.className='rev-item';
+    const head=document.createElement('div'); head.className='rev-q';
+    head.innerHTML=`<span class="ico ${right?'ok':'no'}">${right?'✓':'✗'}</span>
+      <span class="rt">${escapeHTML(q.q)}<small>${q.theme} · ${q.level==='spe'?'Spécifique':'Général'}</small></span>
+      <span class="chev">▸</span>`;
+    head.addEventListener('click',()=>item.classList.toggle('open'));
+
+    const body=document.createElement('div'); body.className='rev-body';
+    let inner='';
+    if(q.code) inner+=`<div class="code" style="margin:0 0 10px"><span class="prompt">PS&gt; </span>${highlight(q.code)}</div>`;
+    inner+=`<div class="line ans-correct">✓ Bonne réponse (${keys[q.correctIdx]}) : ${escapeHTML(q.shown[q.correctIdx].t)}</div>`;
+    if(!right) inner+=`<div class="line ans-yours">✗ Ta réponse (${keys[q.chosen]}) : ${escapeHTML(q.shown[q.chosen].t)}</div>`;
+    inner+=`<div class="ex">${fmtExplain(q.explain)}</div>`;
+    body.innerHTML=inner;
+
+    item.appendChild(head); item.appendChild(body);
+    rev.appendChild(item);
+  });
+  if(!rev.children.length) rev.innerHTML='<p style="color:var(--muted)">Rien à afficher dans cette catégorie.</p>';
+}
+
+// filtres de la revue
+document.querySelector('.filt-rev').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b) return;
+  document.querySelectorAll('.filt-rev .chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+  b.setAttribute('aria-pressed','true');
+  buildReview(b.dataset.rfilt);
+});
+
+el('restartBtn').addEventListener('click',()=>{
+  el('results').style.display='none';
+  el('start').style.display='block';
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+el('retryWrongBtn').addEventListener('click',()=>{
+  const wrong=game.questions.filter(q=>!q.shown[q.chosen]?.ok)
+    .map(q=>({theme:q.theme,level:q.level,q:q.q,code:q.code,options:q.options,correct:q.correct,explain:q.explain}));
+  if(!wrong.length){ alert('Bravo, aucune erreur à refaire !'); return; }
+  startQuiz(sel.shuffle?shuffle(wrong):wrong);
+});
+el('printBtn').addEventListener('click',()=>window.print());
+</script>
+</body>
+</html>
